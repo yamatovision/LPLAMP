@@ -1,4 +1,4 @@
-import { Project, ProjectCreate, ProjectCreateResponse, ProjectCreateResponseData, ProjectStatusResponse, ApiResponse, API_PATHS } from '@/types';
+import { Project, ProjectCreate, ProjectCreateResponse, ProjectStatusResponse, ApiResponse, API_PATHS } from '@/types';
 import { apiClient } from '../api-client';
 
 export const projectsApiService = {

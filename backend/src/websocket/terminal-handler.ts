@@ -4,7 +4,8 @@ import { logger } from '../common/utils/logger';
 import { AuthenticatedUser, TerminalMessage, TerminalMessageType } from '../types';
 
 /**
- * ターミナルセッション管理とメッセージ処理
+ * ClaudeCodeセッション管理とメッセージ処理
+ * 独自ターミナルではなく、ClaudeCode CLIとの直接連携を管理
  */
 export class TerminalHandler {
   private sessions: Map<string, TerminalSession> = new Map();
@@ -13,25 +14,25 @@ export class TerminalHandler {
    * WebSocket接続時の処理
    */
   public handleConnection(socket: Socket, user: AuthenticatedUser): void {
-    logger.info(`ターミナルハンドラー: 接続処理開始 - ${user.username}`);
+    logger.info(`ClaudeCodeハンドラー: 接続処理開始 - ${user.username}`);
 
-    // ターミナル開始イベント
+    // ClaudeCodeセッション開始イベント
     socket.on('terminal:start', async (data: { projectId: string }) => {
       try {
         await this.startTerminalSession(socket, user, data.projectId);
       } catch (error) {
-        logger.error(`ターミナルセッション開始エラー:`, { error, userId: user.id, projectId: data.projectId });
-        socket.emit('terminal:error', { message: 'ターミナルセッションの開始に失敗しました' });
+        logger.error(`ClaudeCodeセッション開始エラー:`, { error, userId: user.id, projectId: data.projectId });
+        socket.emit('terminal:error', { message: 'ClaudeCodeセッションの開始に失敗しました' });
       }
     });
 
-    // メッセージ送信イベント
+    // ClaudeCode入力送信イベント
     socket.on('terminal:input', async (data: { sessionId: string; input: string }) => {
       try {
         await this.handleInput(socket, user, data.sessionId, data.input);
       } catch (error) {
-        logger.error(`ターミナル入力処理エラー:`, { error, userId: user.id, sessionId: data.sessionId });
-        socket.emit('terminal:error', { message: 'コマンドの実行に失敗しました' });
+        logger.error(`ClaudeCode入力処理エラー:`, { error, userId: user.id, sessionId: data.sessionId });
+        socket.emit('terminal:error', { message: 'ClaudeCodeへの入力送信に失敗しました' });
       }
     });
 
@@ -49,6 +50,25 @@ export class TerminalHandler {
       const session = this.sessions.get(data.sessionId);
       const status = session ? session.getStatus() : 'not_found';
       socket.emit('terminal:status', { sessionId: data.sessionId, status });
+    });
+
+    // 要素情報をClaudeCodeに送信するイベント
+    socket.on('terminal:element-context', async (data: { 
+      sessionId: string; 
+      element: {
+        selector: string;
+        tagName: string;
+        text: string;
+        html: string;
+        styles: Record<string, string>;
+      }
+    }) => {
+      try {
+        await this.sendElementContext(socket, user, data.sessionId, data.element);
+      } catch (error) {
+        logger.error(`要素コンテキスト送信エラー:`, { error, userId: user.id, sessionId: data.sessionId });
+        socket.emit('terminal:error', { message: '要素情報の送信に失敗しました' });
+      }
     });
   }
 
@@ -115,7 +135,10 @@ export class TerminalHandler {
     // 初期メッセージの送信
     const welcomeMessage: TerminalMessage = {
       type: TerminalMessageType.SYSTEM,
-      data: `ClaudeCode ターミナル (Project: ${projectId})\\n準備完了 - コマンドを入力してください\\n`,
+      data: `🚀 ClaudeCode セッション開始 (Project: ${projectId})\n` +
+            `📁 作業ディレクトリ: ${session.getWorkingDirectory()}\n` +
+            `⚡ 要素をクリックして編集を開始してください\n` +
+            `🤖 ClaudeCodeの準備が完了するまでお待ちください...\n`,
       timestamp: new Date().toISOString()
     };
     
@@ -206,5 +229,70 @@ export class TerminalHandler {
   public getUserSessionCount(userId: string): number {
     return Array.from(this.sessions.values())
       .filter(session => session.getUserId() === userId).length;
+  }
+
+  /**
+   * 要素情報をClaudeCodeセッションに送信
+   */
+  private async sendElementContext(
+    socket: Socket, 
+    user: AuthenticatedUser, 
+    sessionId: string, 
+    element: {
+      selector: string;
+      tagName: string;
+      text: string;
+      html: string;
+      styles: Record<string, string>;
+    }
+  ): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    
+    if (!session) {
+      socket.emit('terminal:error', { message: `ClaudeCodeセッションが見つかりません: ${sessionId}` });
+      return;
+    }
+
+    if (session.getUserId() !== user.id) {
+      socket.emit('terminal:error', { message: '他のユーザーのセッションにはアクセスできません' });
+      return;
+    }
+
+    // 要素情報をClaudeCodeが理解しやすい形式で整形
+    const contextMessage = `
+📍 編集対象要素が選択されました:
+
+**要素情報:**
+- セレクター: ${element.selector}
+- タグ: ${element.tagName}
+- テキスト内容: "${element.text.substring(0, 100)}${element.text.length > 100 ? '...' : ''}"
+
+**スタイル情報:**
+${Object.entries(element.styles)
+  .filter(([, value]) => value && value !== 'initial' && value !== 'auto')
+  .map(([styleName, value]) => `- ${styleName}: ${value}`)
+  .slice(0, 10)
+  .join('\n')}
+
+**HTML構造:**
+\`\`\`html
+${element.html.substring(0, 500)}${element.html.length > 500 ? '...' : ''}
+\`\`\`
+
+この要素を編集したい場合は、具体的な編集内容を指示してください。
+例：「このテキストを『新しいタイトル』に変更して」
+    `.trim();
+
+    logger.info(`要素コンテキスト送信: ${sessionId}`, {
+      selector: element.selector,
+      tagName: element.tagName,
+      textLength: element.text.length
+    });
+
+    // ClaudeCodeに要素情報を送信
+    await session.sendInput(contextMessage);
+
+    // フロントエンドに送信完了を通知
+    socket.emit('terminal:element-sent', { sessionId, element: element.selector });
   }
 }

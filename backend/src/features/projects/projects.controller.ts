@@ -59,13 +59,10 @@ export class ProjectController {
       logger.info('[プロジェクト作成] 成功', {
         requestId,
         userId: req.user.id,
-        projectId: result.projectId
+        projectId: result.data?.projectId
       });
 
-      res.status(201).json({
-        success: true,
-        data: result
-      } as ApiResponse<ProjectCreateResponse>);
+      res.status(201).json(result);
 
     } catch (error) {
       this.handleError(error, res, requestId, 'プロジェクト作成');
@@ -704,6 +701,108 @@ export class ProjectController {
       });
 
       this.handleError(error, res, requestId, 'ファイル一覧取得');
+    }
+  }
+
+  /**
+   * 自動保存トリガー
+   * POST /api/projects/:id/save/auto
+   */
+  async autoSave(req: Request, res: Response): Promise<void> {
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const projectId = req.params['id'];
+
+    try {
+      logger.info('[自動保存] リクエスト開始', {
+        requestId,
+        projectId,
+        userId: req.user?.id
+      });
+
+      if (!req.user?.id) {
+        logger.warn('[自動保存] 認証エラー', { requestId });
+        res.status(401).json({
+          success: false,
+          error: '認証が必要です'
+        } as ApiResponse);
+        return;
+      }
+
+      if (!projectId) {
+        logger.warn('[自動保存] プロジェクトIDなし', { requestId });
+        res.status(400).json({
+          success: false,
+          error: 'プロジェクトIDが必要です'
+        } as ApiResponse);
+        return;
+      }
+
+      const result = await this.service.autoSave(projectId, req.body, req.user.id);
+
+      logger.info('[自動保存] 成功', {
+        requestId,
+        projectId,
+        scheduled: result.scheduled
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result
+      } as ApiResponse<typeof result>);
+
+    } catch (error) {
+      this.handleError(error, res, requestId, '自動保存');
+    }
+  }
+
+  /**
+   * 明示的保存
+   * POST /api/projects/:id/save/explicit
+   */
+  async explicitSave(req: Request, res: Response): Promise<void> {
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const projectId = req.params['id'];
+
+    try {
+      logger.info('[明示的保存] リクエスト開始', {
+        requestId,
+        projectId,
+        userId: req.user?.id
+      });
+
+      if (!req.user?.id) {
+        logger.warn('[明示的保存] 認証エラー', { requestId });
+        res.status(401).json({
+          success: false,
+          error: '認証が必要です'
+        } as ApiResponse);
+        return;
+      }
+
+      if (!projectId) {
+        logger.warn('[明示的保存] プロジェクトIDなし', { requestId });
+        res.status(400).json({
+          success: false,
+          error: 'プロジェクトIDが必要です'
+        } as ApiResponse);
+        return;
+      }
+
+      const result = await this.service.explicitSave(projectId, req.body, req.user.id);
+
+      logger.info('[明示的保存] 成功', {
+        requestId,
+        projectId,
+        saved: result.saved
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result
+      } as ApiResponse<typeof result>);
+
+    } catch (error) {
+      this.handleError(error, res, requestId, '明示的保存');
     }
   }
 }

@@ -52,6 +52,49 @@ class HistoryModel {
   }
 
   /**
+   * 変更情報付きで新しい履歴を作成
+   */
+  async createWithChanges(
+    projectId: ID,
+    description: string,
+    snapshot: HistorySnapshot,
+    type: HistoryType = HistoryType.EDIT,
+    changes?: any
+  ): Promise<History> {
+    const now = new Date().toISOString();
+    const historyId = `history_${++this.historyIdCounter}`;
+
+    const history: History = {
+      id: historyId,
+      projectId,
+      description,
+      snapshot,
+      type,
+      createdAt: now,
+      updatedAt: now,
+      changes: changes
+    };
+
+    // プロジェクトの履歴配列を初期化（必要な場合）
+    if (!this.store[projectId]) {
+      this.store[projectId] = [];
+    }
+
+    // 履歴を追加
+    this.store[projectId].push(history);
+
+    logger.info('履歴を作成しました（変更情報付き）', {
+      historyId,
+      projectId,
+      type,
+      description,
+      hasChanges: !!changes
+    });
+
+    return history;
+  }
+
+  /**
    * プロジェクトの履歴一覧を取得
    */
   async findByProjectId(projectId: ID): Promise<History[]> {

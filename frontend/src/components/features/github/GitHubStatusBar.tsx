@@ -41,7 +41,7 @@ export const GitHubStatusBar: React.FC<GitHubStatusBarProps> = ({
         // GitHub認証状態取得
         const authResponse = await githubService.getAuthStatus();
         if (authResponse.success && authResponse.data) {
-          setGithubAuth(authResponse.data);
+          setGithubAuth(authResponse);
         }
 
         // 最新コミット情報取得（GitHub連携が有効な場合）
@@ -152,7 +152,7 @@ export const GitHubStatusBar: React.FC<GitHubStatusBarProps> = ({
 
           {/* GitHub認証状態 */}
           <div className="flex items-center gap-2">
-            {githubAuth?.authenticated ? (
+            {githubAuth?.data?.authenticated ? (
               <>
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-green-600">認証済み</span>

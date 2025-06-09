@@ -1,8 +1,35 @@
 {
+  "name": "lplamp",
+  "version": "1.0.0",
+  "description": "LPlamp - LP/HP Builder with AI and GitHub Integration",
   "scripts": {
-    "ts:check": "node scripts/ts-error/analyzer.js"
+    "ts:check": "node scripts/ts-error/analyzer.js",
+    "start": "npm run start:backend & npm run start:frontend",
+    "start:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npm run dev",
+    "start:local": "cd backend && npm run dev:local & cd frontend && npm run dev:local",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build",
+    "test": "cd backend && npm test",
+    "lint": "cd backend && npm run lint && cd ../frontend && npm run lint",
+    "codespaces:setup": "echo '🚀 LPlamp Codespaces Setup Complete!'",
+    "codespaces:health": "npm run health:backend && npm run health:frontend",
+    "health:backend": "cd backend && npm run codespaces:health",
+    "health:frontend": "cd frontend && npm run codespaces:health"
   },
+  "keywords": [
+    "lplamp",
+    "codespaces",
+    "ai",
+    "claude",
+    "github",
+    "website-builder"
+  ],
+  "author": "LPlamp Team",
+  "license": "MIT",
   "devDependencies": {
     "@types/uuid": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -15,6 +15,7 @@ import {
   ProjectFileUpdateRequest,
   ProjectFileUpdateResponse,
   ProjectDirectory,
+  DeployProvider,
   ID 
 } from '../../types';
 import { projectRepository, ProjectRepository } from './projects.model';
@@ -96,7 +97,7 @@ export class ProjectService {
         // GitHub連携情報（Phase 2で追加）
         githubRepo: validatedData.githubRepo,
         githubBranch: validatedData.githubBranch || 'main',
-        deployProvider: validatedData.deployProvider,
+        deployProvider: validatedData.deployProvider as DeployProvider | undefined,
         autoCommit: validatedData.autoCommit || false
       });
 
@@ -119,11 +120,14 @@ export class ProjectService {
       });
 
       return {
-        projectId: project.id,
-        status: 'processing',
-        // GitHub連携情報をレスポンスに含める
-        githubRepo: project.githubRepo,
-        deployUrl: project.deploymentUrl
+        success: true,
+        data: {
+          projectId: project.id,
+          status: 'processing',
+          // GitHub連携情報をレスポンスに含める
+          githubRepo: project.githubRepo || undefined,
+          deployUrl: project.deploymentUrl || undefined
+        }
       };
 
     } catch (error) {
@@ -739,6 +743,24 @@ export class ProjectService {
         throw error;
       }
 
+      // ディレクトリが見つからない場合
+      if (error instanceof Error && error.message.includes('ディレクトリが見つかりません')) {
+        throw new ProjectServiceError(
+          'ディレクトリが見つかりません',
+          'DIRECTORY_NOT_FOUND',
+          404
+        );
+      }
+
+      // パストラバーサル攻撃の場合
+      if (error instanceof Error && error.message.includes('Invalid path')) {
+        throw new ProjectServiceError(
+          '無効なパス',
+          'INVALID_PATH',
+          400
+        );
+      }
+
       logger.error('プロジェクトディレクトリ一覧取得でエラーが発生', {
         error: error instanceof Error ? error.message : String(error),
         projectId,
@@ -802,6 +824,102 @@ export class ProjectService {
       throw new ProjectServiceError(
         'プロジェクトファイルツリーの取得に失敗しました',
         'TREE_FETCH_FAILED'
+      );
+    }
+  }
+
+  /**
+   * 自動保存
+   * @param projectId - プロジェクトID
+   * @param changes - 編集内容
+   * @param userId - ユーザーID
+   * @returns 自動保存スケジューリング結果
+   */
+  async autoSave(projectId: ID, changes: any, userId: ID): Promise<{ scheduled: boolean }> {
+    try {
+      // プロジェクト存在確認とアクセス権限チェック
+      const project = await this.repository.findById(projectId);
+      if (!project) {
+        throw new ProjectNotFoundError();
+      }
+
+      if (!(await this.repository.isOwner(projectId, userId))) {
+        throw new ProjectAccessError();
+      }
+
+      // 自動保存サービスを使用してスケジューリング
+      const { autoSaveService } = await import('../history/auto-save.service');
+      await autoSaveService.scheduleAutoSave(projectId, changes, userId);
+
+      logger.info('自動保存スケジュール成功', {
+        projectId,
+        userId
+      });
+
+      return { scheduled: true };
+
+    } catch (error) {
+      if (error instanceof ProjectServiceError) {
+        throw error;
+      }
+
+      logger.error('自動保存でエラーが発生', {
+        error: error instanceof Error ? error.message : String(error),
+        projectId,
+        userId
+      });
+
+      throw new ProjectServiceError(
+        '自動保存のスケジューリングに失敗しました',
+        'AUTO_SAVE_FAILED'
+      );
+    }
+  }
+
+  /**
+   * 明示的保存
+   * @param projectId - プロジェクトID
+   * @param changes - 編集内容
+   * @param userId - ユーザーID
+   * @returns 明示的保存結果
+   */
+  async explicitSave(projectId: ID, changes: any, userId: ID): Promise<{ saved: boolean }> {
+    try {
+      // プロジェクト存在確認とアクセス権限チェック
+      const project = await this.repository.findById(projectId);
+      if (!project) {
+        throw new ProjectNotFoundError();
+      }
+
+      if (!(await this.repository.isOwner(projectId, userId))) {
+        throw new ProjectAccessError();
+      }
+
+      // 明示的保存の実行
+      const { autoSaveService } = await import('../history/auto-save.service');
+      await autoSaveService.explicitSave(projectId, changes, userId);
+
+      logger.info('明示的保存成功', {
+        projectId,
+        userId
+      });
+
+      return { saved: true };
+
+    } catch (error) {
+      if (error instanceof ProjectServiceError) {
+        throw error;
+      }
+
+      logger.error('明示的保存でエラーが発生', {
+        error: error instanceof Error ? error.message : String(error),
+        projectId,
+        userId
+      });
+
+      throw new ProjectServiceError(
+        '明示的保存に失敗しました',
+        'EXPLICIT_SAVE_FAILED'
       );
     }
   }

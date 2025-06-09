@@ -55,7 +55,7 @@ export const getAuthStatus = async (req: Request, res: Response<ApiResponse<GitH
       operation: 'getAuthStatus',
       requestId,
       userId,
-      authenticated: authStatus.authenticated,
+      authenticated: authStatus.data?.authenticated,
       duration: `${duration}ms`
     });
 
@@ -461,7 +461,7 @@ export const setAuthToken = async (req: Request, res: Response<ApiResponse<GitHu
       operation: 'setAuthToken',
       requestId,
       userId,
-      username: authStatus.username,
+      username: authStatus.data?.username,
       duration: `${duration}ms`
     });
 
@@ -640,8 +640,8 @@ export const getBranches = async (req: Request, res: Response<ApiResponse<{ bran
       operation: 'getBranches',
       requestId,
       userId: req.user?.id,
-      owner: req.params?.owner,
-      repo: req.params?.repo,
+      owner: req.params?.['owner'],
+      repo: req.params?.['repo'],
       error: error.message,
       stack: error.stack,
       duration: `${duration}ms`

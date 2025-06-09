@@ -142,7 +142,8 @@ describe('認証システム統合テスト', () => {
 
       tracker.setOperation('API呼び出し');
       const response = await request(app)
-        .get('/api/auth/github/login');
+        .get('/api/auth/github/login')
+        .set('Accept', 'application/json');
       tracker.mark('APIレスポンス受信', {
         status: response.status,
       });

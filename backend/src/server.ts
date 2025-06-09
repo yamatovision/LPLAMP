@@ -19,7 +19,8 @@ if (envResult.error) {
   console.log('JWT_SECRET:', process.env['JWT_SECRET'] ? '設定済み' : '未設定');
 }
 
-const PORT = process.env['PORT'] || 3001;
+const PORT = process.env['PORT'] || 8080;
+const HOST = process.env['HOST'] || 'localhost';
 
 // HTTPサーバーの作成
 const httpServer = createServer(app);
@@ -27,11 +28,21 @@ const httpServer = createServer(app);
 // WebSocketサーバーの初期化
 const wsServer = new WebSocketServer(httpServer);
 
+// Codespaces環境の検出
+const isCodespaces = process.env['CODESPACES'] === 'true';
+const codespaceName = process.env['CODESPACE_NAME'];
+
 // サーバー起動
-httpServer.listen(PORT, () => {
-  logger.info(`サーバー起動: http://localhost:${PORT}`);
-  logger.info(`WebSocket接続: ws://localhost:${PORT}/ws/socket.io`);
+httpServer.listen(Number(PORT), HOST, () => {
+  logger.info(`サーバー起動: http://${HOST}:${PORT}`);
+  logger.info(`WebSocket接続: ws://${HOST}:${PORT}/ws/socket.io`);
   logger.info(`環境: ${process.env['NODE_ENV'] || 'development'}`);
+  
+  if (isCodespaces) {
+    logger.info(`🚀 GitHub Codespaces環境で動作中`);
+    logger.info(`📝 Codespace名: ${codespaceName}`);
+    logger.info(`🌐 外部アクセスURL: https://${codespaceName}-${PORT}.githubpreview.dev`);
+  }
 });
 
 // グレースフルシャットダウン

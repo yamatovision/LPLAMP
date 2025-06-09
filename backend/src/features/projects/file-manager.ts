@@ -159,12 +159,36 @@ export class ProjectFileManager {
    */
   public async listDirectory(projectId: string, dirPath: string = ''): Promise<ProjectDirectory[]> {
     try {
+      // パストラバーサル攻撃の防止
+      if (dirPath.includes('..') || path.isAbsolute(dirPath)) {
+        throw new Error('Invalid path');
+      }
+
       const fullPath = this.getSecureFilePath(projectId, dirPath);
+      
+      // ディレクトリの存在確認
+      try {
+        const stats = await fs.stat(fullPath);
+        if (!stats.isDirectory()) {
+          throw new Error('ディレクトリが見つかりません');
+        }
+      } catch (statError: any) {
+        if (statError.code === 'ENOENT') {
+          throw new Error('ディレクトリが見つかりません');
+        }
+        throw statError;
+      }
+
       const entries = await fs.readdir(fullPath, { withFileTypes: true });
 
       const result: ProjectDirectory[] = [];
 
       for (const entry of entries) {
+        // 隠しファイル・ディレクトリを除外
+        if (entry.name.startsWith('.')) {
+          continue;
+        }
+
         const entryPath = path.join(dirPath, entry.name);
         const fullEntryPath = path.join(fullPath, entry.name);
 
@@ -174,13 +198,16 @@ export class ProjectFileManager {
             name: entry.name,
             path: entryPath,
             type: 'file',
-            size: stats.size
+            size: stats.size,
+            modified: stats.mtime.toISOString()
           });
         } else if (entry.isDirectory()) {
+          const stats = await fs.stat(fullEntryPath);
           result.push({
             name: entry.name,
             path: entryPath,
-            type: 'directory'
+            type: 'directory',
+            modified: stats.mtime.toISOString()
           });
         }
       }
@@ -196,9 +223,20 @@ export class ProjectFileManager {
       return result;
 
     } catch (error) {
-      if ((error as any).code === 'ENOENT') {
-        return [];
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('Invalid path')) {
+        throw new Error('Invalid path');
       }
+      
+      if (errorMessage.includes('ディレクトリが見つかりません')) {
+        throw new Error('ディレクトリが見つかりません');
+      }
+      
+      if ((error as any).code === 'ENOENT') {
+        throw new Error('ディレクトリが見つかりません');
+      }
+      
       logger.error(`ディレクトリ一覧取得エラー: ${projectId}/${dirPath}`, { error });
       throw error;
     }
@@ -240,11 +278,24 @@ export class ProjectFileManager {
       }
     }
 
+    // ディレクトリ自体の統計情報を取得
+    const fullPath = this.getSecureFilePath(projectId, relativePath);
+    let modified: string | undefined;
+    
+    try {
+      const stats = await fs.stat(fullPath);
+      modified = stats.mtime.toISOString();
+    } catch {
+      // エラーの場合はmodifiedを設定しない
+      modified = undefined;
+    }
+
     return {
       name,
       path: relativePath,
       type: 'directory',
-      children: children.length > 0 ? children : undefined
+      children: children.length > 0 ? children : undefined,
+      modified
     };
   }
 

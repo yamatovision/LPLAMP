@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import EditorLayout from '@/layouts/EditorLayout';
-import { Project, Replica, ElementInfo } from '@/types';
+import { Project, Replica, ElementInfo, TerminalMessage, TerminalMessageType } from '@/types';
 import { useAutoSave, createEditChanges, createProjectFile } from '@/hooks/useAutoSave';
 import { GitHubStatusBar } from '@/components/features/github/GitHubStatusBar';
+import { terminalApiService, TerminalConnection } from '@/services/api/terminal.service';
 
 export default function Editor() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -14,6 +15,12 @@ export default function Editor() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editMode, setEditMode] = useState<'ai' | 'manual' | null>(null);
   const replicaContainerRef = useRef<HTMLDivElement>(null);
+  
+  // ClaudeCodeターミナル関連状態
+  const [terminalConnection, setTerminalConnection] = useState<TerminalConnection | null>(null);
+  const [terminalMessages, setTerminalMessages] = useState<TerminalMessage[]>([]);
+  const [isClaudeCodeReady, setIsClaudeCodeReady] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
 
   // 自動保存フックの統合
   const {
@@ -26,8 +33,55 @@ export default function Editor() {
   useEffect(() => {
     if (projectId) {
       loadProjectData();
+      initializeClaudeCode();
     }
   }, [projectId]);
+
+  // ClaudeCode接続の初期化
+  const initializeClaudeCode = () => {
+    if (!projectId) return;
+
+    try {
+      const connection = terminalApiService.connect(projectId);
+      
+      // ClaudeCodeメッセージ受信
+      connection.onMessage((message: TerminalMessage) => {
+        setTerminalMessages(prev => [...prev, message]);
+        
+        // ClaudeCode準備完了の検出
+        if (message.data.includes('ClaudeCode準備完了')) {
+          setIsClaudeCodeReady(true);
+        }
+      });
+
+      // 要素送信完了通知
+      connection.onElementSent((data) => {
+        console.log('要素情報送信完了:', data);
+        setShowTerminal(true); // ターミナルを自動表示
+      });
+
+      // 接続エラー処理
+      connection.onError((error) => {
+        console.error('ClaudeCode接続エラー:', error);
+        setTerminalMessages(prev => [...prev, {
+          type: TerminalMessageType.ERROR,
+          data: 'ClaudeCodeとの接続に失敗しました',
+          timestamp: new Date().toISOString()
+        }]);
+      });
+
+      // 接続クローズ処理
+      connection.onClose(() => {
+        console.log('ClaudeCode接続が閉じられました');
+        setIsClaudeCodeReady(false);
+        setTerminalConnection(null);
+      });
+
+      setTerminalConnection(connection);
+    } catch (error) {
+      console.error('ClaudeCode初期化エラー:', error);
+    }
+  };
 
   const loadProjectData = async () => {
     if (!projectId) return;
@@ -77,6 +131,13 @@ export default function Editor() {
         const elementInfo = extractElementInfo(target);
         setSelectedElement(elementInfo);
         highlightElement(target);
+        
+        // ClaudeCodeに要素情報を自動送信
+        if (terminalConnection && isClaudeCodeReady) {
+          terminalConnection.sendElementContext(elementInfo);
+        } else {
+          console.warn('ClaudeCodeが準備できていません');
+        }
       });
     });
   };
@@ -270,8 +331,6 @@ export default function Editor() {
       <EditorLayout 
         projectName={project.name} 
         saveStatus={saveStatus}
-        lastSaved={lastSaved}
-        isSaving={isSaving}
       >
         {/* GitHub状態表示バー */}
         <GitHubStatusBar 
@@ -509,6 +568,94 @@ export default function Editor() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ClaudeCodeターミナル */}
+        {showTerminal && (
+          <div className="fixed bottom-0 left-0 right-0 h-80 bg-gray-900 border-t border-gray-600 z-40">
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-600">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-white font-medium">🤖 ClaudeCode</span>
+                {isClaudeCodeReady ? (
+                  <span className="text-green-400 text-sm">Ready</span>
+                ) : (
+                  <span className="text-yellow-400 text-sm">Connecting...</span>
+                )}
+              </div>
+              <button 
+                onClick={() => setShowTerminal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="h-full flex flex-col">
+              {/* メッセージ表示エリア */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {terminalMessages.map((message, index) => (
+                  <div key={index} className="text-sm">
+                    <span className="text-gray-400 text-xs">
+                      {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
+                    </span>
+                    <div className={`mt-1 ${
+                      message.type === TerminalMessageType.ERROR ? 'text-red-400' :
+                      message.type === TerminalMessageType.SYSTEM ? 'text-blue-400' :
+                      message.type === TerminalMessageType.INPUT ? 'text-green-400' :
+                      'text-white'
+                    }`}>
+                      {message.data}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* 入力エリア */}
+              <div className="border-t border-gray-600 p-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={isClaudeCodeReady ? "ClaudeCodeに指示を入力..." : "ClaudeCodeの準備中..."}
+                    disabled={!isClaudeCodeReady}
+                    className="flex-1 bg-gray-800 text-white px-3 py-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && terminalConnection && isClaudeCodeReady) {
+                        const input = e.currentTarget.value;
+                        if (input.trim()) {
+                          terminalConnection.send(input);
+                          e.currentTarget.value = '';
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.querySelector('input[placeholder*="ClaudeCode"]') as HTMLInputElement;
+                      if (input && input.value.trim() && terminalConnection && isClaudeCodeReady) {
+                        terminalConnection.send(input.value);
+                        input.value = '';
+                      }
+                    }}
+                    disabled={!isClaudeCodeReady}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    送信
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ClaudeCodeターミナル表示ボタン */}
+        {!showTerminal && (
+          <button
+            onClick={() => setShowTerminal(true)}
+            className="fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 z-30"
+          >
+            🤖
+          </button>
         )}
       </EditorLayout>
   );

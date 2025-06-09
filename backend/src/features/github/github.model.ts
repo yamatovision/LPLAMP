@@ -355,6 +355,54 @@ export class GitHubRepository {
       throw new Error(`認証ユーザー情報の取得に失敗しました: ${error.message}`);
     }
   }
+
+  /**
+   * リポジトリのブランチ一覧を取得
+   */
+  async getBranches(owner: string, repo: string): Promise<string[]> {
+    const startTime = Date.now();
+    
+    try {
+      logger.info('GitHub ブランチ一覧取得開始', {
+        component: 'GitHubRepository',
+        operation: 'getBranches',
+        owner,
+        repo
+      });
+
+      const response = await this.octokit.rest.repos.listBranches({
+        owner,
+        repo
+      });
+      
+      const branches = response.data.map(branch => branch.name);
+      
+      const duration = Date.now() - startTime;
+      logger.info('GitHub ブランチ一覧取得完了', {
+        component: 'GitHubRepository',
+        operation: 'getBranches',
+        owner,
+        repo,
+        branchCount: branches.length,
+        duration: `${duration}ms`
+      });
+
+      return branches;
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      logger.error('GitHub ブランチ一覧取得エラー', {
+        component: 'GitHubRepository',
+        operation: 'getBranches',
+        owner,
+        repo,
+        error: error.message,
+        status: error.status,
+        duration: `${duration}ms`
+      });
+      
+      throw new Error(`ブランチ一覧の取得に失敗しました: ${error.message}`);
+    }
+  }
 }
 
 /**
@@ -521,12 +569,12 @@ export class GitHubAuthRepository {
       const authInfo = await this.getAuthInfo(userId);
       
       const status: GitHubAuthStatus = {
-        authenticated: !!authInfo
+        success: true,
+        data: {
+          authenticated: !!authInfo,
+          username: authInfo?.username || undefined
+        }
       };
-      
-      if (authInfo?.username) {
-        status.username = authInfo.username;
-      }
       
       return status;
     } catch (error: any) {
@@ -538,7 +586,14 @@ export class GitHubAuthRepository {
       });
       
       // エラーの場合は未認証として扱う
-      return { authenticated: false };
+      const status: GitHubAuthStatus = { 
+        success: true,
+        data: { 
+          authenticated: false,
+          username: undefined
+        }
+      };
+      return status;
     }
   }
 }

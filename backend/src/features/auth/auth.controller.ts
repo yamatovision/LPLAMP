@@ -8,7 +8,6 @@
 import { Request, Response } from 'express';
 import { 
   ApiResponse, 
-  AuthStatusResponse, 
   LoginResponse 
 } from '../../types/index.js';
 import { getAuthService, AuthServiceError } from './auth.service.js';
@@ -279,7 +278,7 @@ export async function getCurrentUser(req: Request, res: Response): Promise<void>
     // 最新のユーザー情報を取得
     const authStatus = await getAuthService().getAuthStatus(authenticatedUser.id);
     
-    if (!authStatus.authenticated || !authStatus.user) {
+    if (!authStatus.data?.authenticated || !authStatus.data.user) {
       throw new AuthControllerError(
         'ユーザー情報が見つかりません',
         404
@@ -287,11 +286,11 @@ export async function getCurrentUser(req: Request, res: Response): Promise<void>
     }
 
     perfLog.end({
-      userId: authStatus.user.id,
-      username: authStatus.user.username,
+      userId: authStatus.data.user.id,
+      username: authStatus.data.user.username,
     });
 
-    const response = createSuccessResponse(authStatus.user);
+    const response = createSuccessResponse(authStatus.data.user);
     res.json(response);
   } catch (error) {
     perfLog.error(error as Error);

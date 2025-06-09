@@ -70,18 +70,19 @@ export interface PaginatedResponse<T> {
  */
 export interface ProjectCreate {
   url: string;
-  name?: string;
+  name?: string | undefined;
   // GitHub連携拡張
-  githubRepo?: string;
-  githubBranch?: string;
-  deployProvider?: DeployProvider;
-  autoCommit?: boolean;
+  githubRepo?: string | undefined;
+  githubBranch?: string | undefined;
+  deployProvider?: DeployProvider | undefined;
+  autoCommit?: boolean | undefined;
 }
 
 /**
  * プロジェクト基本情報
  */
-export interface ProjectBase extends Omit<ProjectCreate, 'name'> {
+export interface ProjectBase {
+  url: string;
   name: string;
   thumbnail?: string | null;
   githubRepo?: string | null;
@@ -116,8 +117,8 @@ export interface ProjectCreateResponseData {
   projectId: ID;
   status: 'processing';
   // GitHub連携情報
-  githubRepo?: string;
-  deployUrl?: string;
+  githubRepo?: string | undefined;
+  deployUrl?: string | undefined;
 }
 
 /**
@@ -221,6 +222,7 @@ export interface History extends Timestamps {
   description: string;
   snapshot: HistorySnapshot;
   type: HistoryType;
+  changes?: EditChanges;
 }
 
 /**
@@ -294,9 +296,9 @@ export interface Export extends Timestamps {
  */
 export interface GitHubAuthStatusData {
   authenticated: boolean;
-  username?: string;
-  scopes?: string[];
-  expiresAt?: string;
+  username?: string | undefined;
+  scopes?: string[] | undefined;
+  expiresAt?: string | undefined;
 }
 
 /**
@@ -326,6 +328,7 @@ export interface GitHubRepository {
   private: boolean;
   defaultBranch: string;
   htmlUrl: string;
+  getBranches?: (owner: string, repo: string) => Promise<string[]>;
 }
 
 /**
@@ -519,11 +522,20 @@ export interface ProjectFile {
 }
 
 /**
+ * 編集変更ファイル情報
+ */
+export interface EditChangedFile {
+  path: string;
+  content: string;
+  action: 'create' | 'update' | 'delete';
+}
+
+/**
  * 編集変更情報
  */
 export interface EditChanges {
   description?: string;
-  changedFiles: ProjectFile[];
+  changedFiles: EditChangedFile[];
   timestamp: string;
 }
 
@@ -560,6 +572,7 @@ export interface ProjectDirectory {
   type: 'file' | 'directory';
   children?: ProjectDirectory[] | undefined;
   size?: number | undefined;
+  modified?: string | undefined;  // ファイル/ディレクトリの最終更新日時（ISO文字列）
 }
 
 // ===== APIパス定義 =====
@@ -650,6 +663,17 @@ export const API_PATHS = {
     GET: (projectId: string, filePath: string) => `/api/projects/${projectId}/files/${encodeURIComponent(filePath)}`,
     UPDATE: (projectId: string, filePath: string) => `/api/projects/${projectId}/files/${encodeURIComponent(filePath)}`,
     LIST: (projectId: string) => `/api/projects/${projectId}/files`,
+  },
+
+  // Phase 3: GitHub連携エディター統合 (タスク9.1-9.4)
+  AUTO_SAVE: {
+    AUTO: (projectId: string) => `/api/projects/${projectId}/save/auto`,
+    EXPLICIT: (projectId: string) => `/api/projects/${projectId}/save/explicit`,
+  },
+
+  // WebSocket拡張
+  WEBSOCKET_EXTENDED: {
+    GITHUB_SYNC: '/ws/github-sync',
   },
 };
 

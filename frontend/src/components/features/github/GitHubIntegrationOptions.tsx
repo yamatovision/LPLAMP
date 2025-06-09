@@ -35,7 +35,7 @@ export default function GitHubIntegrationOptions({ onOptionsChange }: GitHubInte
       autoCommit
     };
 
-    if (authStatus?.authenticated && (selectedRepo || newRepoName)) {
+    if (authStatus?.data?.authenticated && (selectedRepo || newRepoName)) {
       onOptionsChange(options);
     } else {
       onOptionsChange(null);
@@ -48,12 +48,12 @@ export default function GitHubIntegrationOptions({ onOptionsChange }: GitHubInte
       const status = await githubService.getAuthStatus();
       setAuthStatus(status);
 
-      if (status.authenticated) {
+      if (status.data?.authenticated) {
         await loadRepositories();
       }
     } catch (error) {
       console.error('GitHub認証状態の確認に失敗:', error);
-      setAuthStatus({ authenticated: false });
+      setAuthStatus({ success: false, data: { authenticated: false } } as GitHubAuthStatus);
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +88,7 @@ export default function GitHubIntegrationOptions({ onOptionsChange }: GitHubInte
     );
   }
 
-  if (!authStatus?.authenticated) {
+  if (!authStatus?.data?.authenticated) {
     return (
       <div className="text-center py-6">
         <div className="mb-4">
@@ -127,7 +127,7 @@ export default function GitHubIntegrationOptions({ onOptionsChange }: GitHubInte
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-green-800">
-              {authStatus.username} として連携済み
+              {authStatus.data?.username} として連携済み
             </p>
           </div>
         </div>

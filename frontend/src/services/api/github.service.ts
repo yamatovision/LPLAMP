@@ -73,6 +73,16 @@ export const githubApiService = {
       throw new Error(apiResponse?.error || 'GitHub認証開始に失敗しました');
     } catch (error: any) {
       console.error('GitHub認証開始エラー:', error);
+      console.error('エラー詳細:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          data: error.config?.data
+        }
+      });
       throw new Error(error.message || 'GitHub認証の開始に失敗しました');
     }
   },

@@ -7,7 +7,7 @@
 import { WebSocket } from 'ws';
 import { ID, DeploymentStatus } from '../types/index.js';
 import { logger } from '../common/utils/logger.js';
-import { projectService } from '../features/projects/projects.service.js';
+// import { projectService } from '../features/projects/projects.service.js'; // 未使用のため削除
 
 /**
  * GitHub同期イベントの型定義
@@ -25,7 +25,7 @@ export interface GitHubSyncEvent {
 interface ConnectedClient {
   ws: WebSocket;
   projectId: ID;
-  userId?: ID;
+  userId: ID | undefined;
   connectedAt: Date;
 }
 
@@ -50,7 +50,7 @@ export class GitHubSyncHandler {
     const client: ConnectedClient = {
       ws,
       projectId,
-      userId,
+      userId: userId || undefined,
       connectedAt: new Date()
     };
 
@@ -363,7 +363,7 @@ export class GitHubSyncHandler {
     }
 
     // 全クライアントを切断
-    this.clients.forEach((client, clientId) => {
+    this.clients.forEach((client) => {
       if (client.ws.readyState === WebSocket.OPEN) {
         client.ws.close(1001, 'Server shutdown');
       }

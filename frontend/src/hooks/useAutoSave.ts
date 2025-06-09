@@ -203,7 +203,11 @@ export const createEditChanges = (
 ): EditChanges => {
   return {
     description,
-    changedFiles,
+    changedFiles: changedFiles.map(file => ({
+      path: file.path,
+      content: file.content,
+      action: 'update' as const
+    })),
     timestamp: new Date().toISOString()
   };
 };

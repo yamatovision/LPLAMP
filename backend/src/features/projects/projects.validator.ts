@@ -28,6 +28,10 @@ export class ValidationError extends Error {
 export interface ProjectCreateValidation {
   url: string;
   name?: string;
+  githubRepo?: string;
+  githubBranch?: string;
+  deployProvider?: string;
+  autoCommit?: boolean;
 }
 
 /**
@@ -75,7 +79,11 @@ export function validateProjectCreate(data: any): ProjectCreateValidation {
 
   const result: ProjectCreateValidation = {
     url: data.url.trim(),
-    ...(data.name && { name: data.name.trim() })
+    ...(data.name && { name: data.name.trim() }),
+    ...(data.githubRepo && { githubRepo: data.githubRepo }),
+    ...(data.githubBranch && { githubBranch: data.githubBranch }),
+    ...(data.deployProvider && { deployProvider: data.deployProvider }),
+    ...(data.autoCommit !== undefined && { autoCommit: data.autoCommit })
   };
 
   logger.debug('プロジェクト作成バリデーション成功', result);

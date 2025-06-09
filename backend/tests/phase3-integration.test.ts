@@ -13,10 +13,10 @@ import request from 'supertest';
 import WebSocket from 'ws';
 import { app } from '../src/app.js';
 import { AutoSaveService } from '../src/features/history/auto-save.service.js';
-import { GitHubService } from '../src/features/github/github.service.js';
+// import { GitHubService } from '../src/features/github/github.service.js'; // 未使用
 import { githubSyncHandler } from '../src/websocket/github-sync-handler.js';
-import { projectService } from '../src/features/projects/projects.service.js';
-import { authHelper } from './utils/test-auth-helper.js';
+// import { projectService } from '../src/features/projects/projects.service.js'; // 未使用
+// import { authHelper } from './utils/test-auth-helper.js'; // モジュール不存在
 import { logger } from '../src/common/utils/logger.js';
 
 describe('Phase 3 統合テスト - GitHub連携エディター統合', () => {
@@ -26,10 +26,10 @@ describe('Phase 3 統合テスト - GitHub連携エディター統合', () => {
   let testProject: any;
 
   beforeAll(async () => {
-    // テスト用認証セットアップ
-    const authResult = await authHelper.createTestUser();
-    authToken = authResult.token;
-    testUserId = authResult.userId;
+    // テスト用認証セットアップ（TODO: authHelper実装待ち）
+    // const authResult = await authHelper.createTestUser();
+    authToken = 'test-token';
+    testUserId = 'test-user-id';
     
     logger.info('Phase 3統合テスト開始', {
       testUserId,
@@ -78,7 +78,7 @@ describe('Phase 3 統合テスト - GitHub連携エディター統合', () => {
   });
 
   afterAll(async () => {
-    await authHelper.cleanup();
+    // await authHelper.cleanup(); // TODO: authHelper実装待ち
     logger.info('Phase 3統合テスト終了');
   });
 
@@ -96,9 +96,7 @@ describe('Phase 3 統合テスト - GitHub連携エディター統合', () => {
           {
             path: 'index.html',
             content: '<html><body>Updated Content</body></html>',
-            size: 46,
-            mimeType: 'text/html',
-            lastModified: new Date().toISOString()
+            action: 'update' as const
           }
         ],
         timestamp: new Date().toISOString()
@@ -127,9 +125,7 @@ describe('Phase 3 統合テスト - GitHub連携エディター統合', () => {
           {
             path: 'index.html',
             content: '<html><body>Explicit Save Content</body></html>',
-            size: 50,
-            mimeType: 'text/html',
-            lastModified: new Date().toISOString()
+            action: 'update' as const
           }
         ],
         timestamp: new Date().toISOString()
@@ -436,9 +432,7 @@ describe('Phase 3 統合テスト - GitHub連携エディター統合', () => {
           {
             path: 'index.html',
             content: updatedContent,
-            size: updatedContent.length,
-            mimeType: 'text/html',
-            lastModified: new Date().toISOString()
+            action: 'update' as const
           }
         ],
         timestamp: new Date().toISOString()

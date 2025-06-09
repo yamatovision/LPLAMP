@@ -6,11 +6,9 @@ interface EditorLayoutProps {
   children: ReactNode;
   projectName?: string;
   saveStatus?: 'idle' | 'saved' | 'saving' | 'error';
-  lastSaved?: Date | null;
-  isSaving?: boolean;
 }
 
-export default function EditorLayout({ children, projectName, saveStatus = 'saved', lastSaved, isSaving }: EditorLayoutProps) {
+export default function EditorLayout({ children, projectName, saveStatus = 'saved' }: EditorLayoutProps) {
   const { user, logout } = useAuth();
   const { projectId } = useParams();
   const [isTerminalVisible, setIsTerminalVisible] = useState(false);

@@ -9,8 +9,10 @@ import { logger } from '../../common/utils/logger';
 import type { 
   GitHubRepository as IGitHubRepository, 
   GitHubAuthStatus, 
+  GitHubAuthStatusData,
   GitHubPushRequest, 
-  GitHubPushResponse 
+  GitHubPushResponse,
+  ApiResponse
 } from '../../types/index';
 import fs from 'fs/promises';
 import path from 'path';
@@ -41,7 +43,7 @@ export class GitHubService {
         component: 'GitHubService',
         operation: 'getAuthStatus',
         userId,
-        authenticated: authStatus.authenticated,
+        authenticated: authStatus.data?.authenticated,
         duration: `${duration}ms`
       });
 
@@ -90,9 +92,12 @@ export class GitHubService {
         userId
       });
 
-      const authStatus = {
-        authenticated: true,
-        username: userInfo.username
+      const authStatus: ApiResponse<GitHubAuthStatusData> = {
+        success: true,
+        data: {
+          authenticated: true,
+          username: userInfo.username
+        }
       };
 
       const duration = Date.now() - startTime;
@@ -532,7 +537,7 @@ export class GitHubService {
         duration: `${duration}ms`
       });
 
-      return branches;
+      return branches.map(name => ({ name, sha: '', protected: false }));
     } catch (error: any) {
       const duration = Date.now() - startTime;
       logger.error('GitHub ブランチ一覧取得エラー', {

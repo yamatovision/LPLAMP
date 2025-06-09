@@ -31,13 +31,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('AuthContext: 認証API レスポンス:', data);
       
-      // APIレスポンスがラップされた形式の場合は data プロパティを展開
-      const authData = data.success ? data.data : data;
-      console.log('AuthContext: 認証データ:', authData);
-      
-      if (authData.authenticated && authData.user) {
-        console.log('AuthContext: 認証成功、ユーザー設定:', authData.user);
-        setUser(authData.user);
+      // APIレスポンスのdata部分から認証情報を取得
+      if (data.success && data.data?.authenticated && data.data.user) {
+        console.log('AuthContext: 認証成功、ユーザー設定:', data.data.user);
+        setUser(data.data.user);
       } else {
         console.log('AuthContext: 認証失敗またはユーザーなし');
         setUser(null);

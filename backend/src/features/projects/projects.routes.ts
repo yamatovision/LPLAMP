@@ -146,6 +146,30 @@ export function createProjectRoutes(): Router {
     projectController.updateProjectFile.bind(projectController)
   );
 
+  /**
+   * 自動保存トリガー
+   * POST /api/projects/:id/save/auto
+   * パラメータ: id - プロジェクトID
+   * Body: { description: string, changedFiles: array, timestamp: string }
+   */
+  router.post(
+    '/:id/save/auto',
+    authMiddleware,
+    projectController.autoSave.bind(projectController)
+  );
+
+  /**
+   * 明示的保存
+   * POST /api/projects/:id/save/explicit
+   * パラメータ: id - プロジェクトID
+   * Body: { description: string, changedFiles: array, timestamp: string }
+   */
+  router.post(
+    '/:id/save/explicit',
+    authMiddleware,
+    projectController.explicitSave.bind(projectController)
+  );
+
   // エクスポート履歴取得ルートを組み込み
   router.use('/', createProjectExportRoutes());
 
@@ -161,7 +185,9 @@ export function createProjectRoutes(): Router {
       'GET /:id/variations',
       'GET /:id/files',
       'GET /:id/files/:path',
-      'PUT /:id/files/:path'
+      'PUT /:id/files/:path',
+      'POST /:id/save/auto',
+      'POST /:id/save/explicit'
     ]
   });
 

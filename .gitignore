@@ -40,3 +40,8 @@ Thumbs.db
 .appgenius_temp/
 .claude_data/
 .claude/
+.vq*
+
+# レプリカフォルダ
+backend/replica_*/
+backend/test-output/

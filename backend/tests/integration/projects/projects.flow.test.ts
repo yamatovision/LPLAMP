@@ -52,7 +52,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('プロジェクト作成');
       const createResponse = await request(await createTestUserWithToken.getApp())
         .post('/api/projects/create')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .send({
           url: testData.testUrl,
           name: testData.projectName
@@ -60,17 +60,19 @@ describe('プロジェクト管理API統合テスト', () => {
         .expect(201);
 
       expect(createResponse.body.success).toBe(true);
-      expect(createResponse.body.data.projectId).toBeDefined();
-      expect(createResponse.body.data.status).toBe('processing');
+      // レスポンス構造の正規化: data.data.projectId -> projectId
+      const responseData = createResponse.body.data.data || createResponse.body.data;
+      expect(responseData.projectId).toBeDefined();
+      expect(responseData.status).toBe('processing');
       
-      createdProjectId = createResponse.body.data.projectId;
+      createdProjectId = responseData.projectId;
       tracker.mark('プロジェクト作成完了');
 
       // ステップ3: プロジェクト一覧で確認
       tracker.setOperation('プロジェクト一覧確認');
       const listResponse = await request(await createTestUserWithToken.getApp())
         .get('/api/projects')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(200);
 
       expect(listResponse.body.success).toBe(true);
@@ -88,7 +90,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('ステータス確認');
       const statusResponse = await request(await createTestUserWithToken.getApp())
         .get(`/api/projects/${createdProjectId}/status`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(200);
 
       expect(statusResponse.body.success).toBe(true);
@@ -108,13 +110,15 @@ describe('プロジェクト管理API統合テスト', () => {
 
       const createResponse = await request(await createTestUserWithToken.getApp())
         .post('/api/projects/create')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .send({
           url: testData.testUrl,
           name: testData.projectName
         });
 
-      createdProjectId = createResponse.body.data.projectId;
+      // レスポンス構造の正規化
+      const responseData = createResponse.body.data.data || createResponse.body.data;
+      createdProjectId = responseData.projectId;
     });
 
     it('プロジェクト詳細取得が正常に動作する', async () => {
@@ -124,7 +128,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('プロジェクト詳細取得');
       const detailResponse = await request(await createTestUserWithToken.getApp())
         .get(`/api/projects/${createdProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(200);
 
       expect(detailResponse.body.success).toBe(true);
@@ -144,7 +148,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('プロジェクト情報更新');
       const updateResponse = await request(await createTestUserWithToken.getApp())
         .put(`/api/projects/${createdProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .send({
           name: testData.updatedName,
           githubRepo: 'test-user/test-repo'
@@ -160,7 +164,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('更新確認');
       const verifyResponse = await request(await createTestUserWithToken.getApp())
         .get(`/api/projects/${createdProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(200);
 
       expect(verifyResponse.body.data.name).toBe(testData.updatedName);
@@ -177,7 +181,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('プロジェクト削除');
       const deleteResponse = await request(await createTestUserWithToken.getApp())
         .delete(`/api/projects/${createdProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(200);
 
       expect(deleteResponse.body.success).toBe(true);
@@ -187,7 +191,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('削除確認');
       await request(await createTestUserWithToken.getApp())
         .get(`/api/projects/${createdProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(404);
       tracker.mark('削除確認完了');
 
@@ -212,13 +216,15 @@ describe('プロジェクト管理API統合テスト', () => {
       // テストユーザー2のプロジェクト作成
       const createResponse = await request(await createTestUserWithToken.getApp())
         .post('/api/projects/create')
-        .set('Authorization', `Bearer ${otherUserToken}`)
+        .set('Cookie', `authToken=${otherUserToken}`)
         .send({
           url: testData.testUrl,
           name: otherUserData.projectName
         });
 
-      otherUserProjectId = createResponse.body.data.projectId;
+      // レスポンス構造の正規化
+      const responseData = createResponse.body.data.data || createResponse.body.data;
+      otherUserProjectId = responseData.projectId;
     });
 
     it('他のユーザーのプロジェクトにアクセスできない', async () => {
@@ -229,7 +235,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('不正アクセステスト（詳細取得）');
       await request(await createTestUserWithToken.getApp())
         .get(`/api/projects/${otherUserProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(403);
       tracker.mark('詳細取得拒否確認');
 
@@ -237,7 +243,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('不正アクセステスト（更新）');
       await request(await createTestUserWithToken.getApp())
         .put(`/api/projects/${otherUserProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .send({ name: 'Unauthorized Update' })
         .expect(403);
       tracker.mark('更新拒否確認');
@@ -246,7 +252,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('不正アクセステスト（削除）');
       await request(await createTestUserWithToken.getApp())
         .delete(`/api/projects/${otherUserProjectId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(403);
       tracker.mark('削除拒否確認');
 
@@ -289,7 +295,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('無効URL形式テスト');
       await request(await createTestUserWithToken.getApp())
         .post('/api/projects/create')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .send({ url: 'invalid-url' })
         .expect(400);
       tracker.mark('無効URL拒否確認');
@@ -298,7 +304,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('URL未指定テスト');
       await request(await createTestUserWithToken.getApp())
         .post('/api/projects/create')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .send({ name: 'Test Project' })
         .expect(400);
       tracker.mark('URL必須確認');
@@ -315,7 +321,7 @@ describe('プロジェクト管理API統合テスト', () => {
       tracker.setOperation('存在しないID アクセステスト');
       await request(await createTestUserWithToken.getApp())
         .get(`/api/projects/${nonExistentId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', `authToken=${authToken}`)
         .expect(404);
       tracker.mark('404エラー確認');
 
