@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LPlamp - ダッシュボード</title>
+    
+    <!-- Material UI CDN -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        /* ヘッダー */
+        .header {
+            background-color: #1976d2;
+            color: white;
+            padding: 16px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo .material-icons {
+            font-size: 32px;
+        }
+        
+        /* メインコンテンツ */
+        .main-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 24px;
+        }
+        
+        /* URL入力セクション */
+        .url-input-section {
+            background: white;
+            border-radius: 8px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+        
+        .url-input-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: #1976d2;
+        }
+        
+        .url-input-container {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        
+        .url-input {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .url-input:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+        
+        .create-button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .create-button:hover {
+            background-color: #1565c0;
+        }
+        
+        .create-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* プロジェクト一覧 */
+        .projects-section {
+            margin-bottom: 40px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 400;
+        }
+        
+        .show-more-button {
+            background: none;
+            border: none;
+            color: #1976d2;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .show-more-button:hover {
+            background-color: rgba(25, 118, 210, 0.1);
+        }
+        
+        /* プロジェクトカード */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+        }
+        
+        .project-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .project-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .project-thumbnail {
+            width: 100%;
+            height: 180px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .project-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .project-thumbnail .material-icons {
+            font-size: 48px;
+            color: #ccc;
+        }
+        
+        .project-info {
+            padding: 16px;
+        }
+        
+        .project-name {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .project-url {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .project-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* 空の状態 */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+        }
+        
+        .empty-state .material-icons {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state-text {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        
+        .empty-state-subtext {
+            font-size: 14px;
+        }
+        
+        /* ローディング */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loading-spinner {
+            background: white;
+            border-radius: 8px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1976d2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 16px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="material-icons">web</i>
+                <span>LPlamp</span>
+            </div>
+        </div>
+    </header>
+    
+    <!-- メインコンテンツ -->
+    <main class="main-container">
+        <!-- URL入力セクション -->
+        <section class="url-input-section">
+            <h2 class="url-input-title">新しいプロジェクトを開始</h2>
+            <div class="url-input-container">
+                <input 
+                    type="url" 
+                    class="url-input" 
+                    placeholder="参考にしたいサイトのURLを入力（例: https://example.com）"
+                    id="urlInput"
+                >
+                <button class="create-button" id="createButton" disabled>
+                    <i class="material-icons">add</i>
+                    作成開始
+                </button>
+            </div>
+        </section>
+        
+        <!-- プロジェクト一覧 -->
+        <section class="projects-section">
+            <div class="section-header">
+                <h2 class="section-title">最近のプロジェクト</h2>
+                <button class="show-more-button" id="showMoreButton" style="display: none;">
+                    もっと見る
+                    <i class="material-icons">expand_more</i>
+                </button>
+            </div>
+            
+            <div class="projects-grid" id="projectsGrid">
+                <!-- プロジェクトカードがここに動的に追加される -->
+            </div>
+            
+            <!-- 空の状態 -->
+            <div class="empty-state" id="emptyState">
+                <i class="material-icons">folder_open</i>
+                <div class="empty-state-text">プロジェクトがありません</div>
+                <div class="empty-state-subtext">URLを入力して最初のプロジェクトを作成しましょう</div>
+            </div>
+        </section>
+    </main>
+    
+    <!-- ローディングオーバーレイ -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text">レプリカを作成中...</div>
+        </div>
+    </div>
+    
+    <script>
+        // モックデータ
+        const mockProjects = [
+            {
+                id: 'proj-001',
+                name: '株式会社サンプル コーポレートサイト',
+                url: 'https://sample-corp.com',
+                thumbnail: null,
+                createdAt: '2025-01-08',
+                updatedAt: '2025-01-09'
+            },
+            {
+                id: 'proj-002',
+                name: 'キャンペーンLP - 新商品プロモーション',
+                url: 'https://campaign.example.com',
+                thumbnail: null,
+                createdAt: '2025-01-05',
+                updatedAt: '2025-01-07'
+            },
+            {
+                id: 'proj-003',
+                name: 'サービス紹介ページ',
+                url: 'https://service.example.net',
+                thumbnail: null,
+                createdAt: '2025-01-03',
+                updatedAt: '2025-01-03'
+            }
+        ];
+        
+        // DOM要素
+        const urlInput = document.getElementById('urlInput');
+        const createButton = document.getElementById('createButton');
+        const projectsGrid = document.getElementById('projectsGrid');
+        const emptyState = document.getElementById('emptyState');
+        const showMoreButton = document.getElementById('showMoreButton');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        
+        let showAll = false;
+        
+        // URL入力の検証
+        urlInput.addEventListener('input', (e) => {
+            const url = e.target.value.trim();
+            const isValid = url.length > 0 && (url.startsWith('http://') || url.startsWith('https://'));
+            createButton.disabled = !isValid;
+        });
+        
+        // エンターキーでも作成開始
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !createButton.disabled) {
+                createProject();
+            }
+        });
+        
+        // プロジェクト作成
+        createButton.addEventListener('click', createProject);
+        
+        function createProject() {
+            const url = urlInput.value.trim();
+            
+            // ローディング表示
+            loadingOverlay.classList.add('active');
+            
+            // 実際のAPIコールをシミュレート
+            setTimeout(() => {
+                // エディター画面への遷移をシミュレート
+                alert(`プロジェクトを作成しました！\nURL: ${url}\n\n※ 実際の実装では /editor/new-project-id へ遷移します`);
+                loadingOverlay.classList.remove('active');
+                urlInput.value = '';
+                createButton.disabled = true;
+            }, 2000);
+        }
+        
+        // プロジェクト一覧の表示
+        function renderProjects() {
+            const projects = showAll ? mockProjects : mockProjects.slice(0, 3);
+            
+            if (mockProjects.length === 0) {
+                emptyState.style.display = 'block';
+                projectsGrid.style.display = 'none';
+                showMoreButton.style.display = 'none';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            projectsGrid.style.display = 'grid';
+            
+            projectsGrid.innerHTML = projects.map(project => `
+                <div class="project-card" onclick="openProject('${project.id}')">
+                    <div class="project-thumbnail">
+                        ${project.thumbnail 
+                            ? `<img src="${project.thumbnail}" alt="${project.name}">` 
+                            : '<i class="material-icons">web</i>'
+                        }
+                    </div>
+                    <div class="project-info">
+                        <div class="project-name">${project.name}</div>
+                        <div class="project-url">${project.url}</div>
+                        <div class="project-meta">
+                            <span>作成: ${formatDate(project.createdAt)}</span>
+                            <span>更新: ${formatDate(project.updatedAt)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // もっと見るボタンの表示制御
+            if (mockProjects.length > 3) {
+                showMoreButton.style.display = 'flex';
+                showMoreButton.innerHTML = showAll 
+                    ? '折りたたむ<i class="material-icons">expand_less</i>'
+                    : 'もっと見る<i class="material-icons">expand_more</i>';
+            }
+        }
+        
+        // 日付フォーマット
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${month}/${day}`;
+        }
+        
+        // プロジェクトを開く
+        function openProject(projectId) {
+            // エディター画面への遷移をシミュレート
+            alert(`プロジェクト ${projectId} を開きます\n\n※ 実際の実装では /editor/${projectId} へ遷移します`);
+        }
+        
+        // もっと見るボタン
+        showMoreButton.addEventListener('click', () => {
+            showAll = !showAll;
+            renderProjects();
+        });
+        
+        // 初期表示
+        renderProjects();
+    </script>
+</body>
+</html>

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LPlamp エディター</title>
+    
+    <!-- Material UI CDN -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+        
+        /* ヘッダー */
+        .header {
+            background-color: #1976d2;
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 56px;
+            z-index: 100;
+            position: relative;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .project-name {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .save-indicator {
+            font-size: 14px;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .terminal-toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        
+        .terminal-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* メインコンテナ */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 56px);
+            position: relative;
+        }
+        
+        /* エディタービュー */
+        .editor-view {
+            flex: 1;
+            position: relative;
+            background-color: white;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .editor-view.with-terminal-bottom {
+            height: calc(100% - 300px);
+        }
+        
+        .editor-view.with-terminal-right {
+            width: calc(100% - 400px);
+        }
+        
+        /* iframe コンテナ */
+        .iframe-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        #replica-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* 要素選択オーバーレイ */
+        .element-overlay {
+            position: absolute;
+            border: 2px solid #1976d2;
+            background-color: rgba(25, 118, 210, 0.1);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .element-overlay.active {
+            opacity: 1;
+        }
+        
+        /* 浮動ツールバー */
+        .floating-toolbar {
+            position: absolute;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px;
+            display: none;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .floating-toolbar.active {
+            display: flex;
+        }
+        
+        .toolbar-btn {
+            width: auto;
+            height: 36px;
+            border: none;
+            background-color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0 12px;
+            gap: 8px;
+            transition: background-color 0.2s;
+            font-size: 14px;
+            color: #424242;
+            text-align: left;
+            min-width: 180px;
+        }
+        
+        .toolbar-btn:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .toolbar-btn .material-icons {
+            font-size: 20px;
+            color: #424242;
+        }
+        
+        /* ClaudeCodeターミナル */
+        .terminal-container {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            position: absolute;
+            display: none;
+            flex-direction: column;
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+        
+        .terminal-container.active {
+            display: flex;
+        }
+        
+        .terminal-container.bottom {
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            border-top: 2px solid #1976d2;
+        }
+        
+        .terminal-container.right {
+            right: 0;
+            top: 56px;
+            bottom: 0;
+            width: 400px;
+            border-left: 2px solid #1976d2;
+        }
+        
+        .terminal-container.minimized {
+            height: 40px !important;
+        }
+        
+        .terminal-header {
+            background-color: #2d2d2d;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #444;
+            user-select: none;
+        }
+        
+        .terminal-title {
+            color: #e0e0e0;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .terminal-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .terminal-control-btn {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .terminal-control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }
+        
+        .terminal-control-btn .material-icons {
+            font-size: 18px;
+        }
+        
+        .terminal-body {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+        
+        .terminal-output {
+            margin-bottom: 8px;
+        }
+        
+        .terminal-prompt {
+            color: #4CAF50;
+            margin-right: 8px;
+        }
+        
+        .terminal-command {
+            color: #64B5F6;
+        }
+        
+        .terminal-response {
+            color: #e0e0e0;
+            white-space: pre-wrap;
+            margin-left: 0;
+        }
+        
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+        }
+        
+        .terminal-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            padding: 0;
+        }
+        
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background-color: #e0e0e0;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* 選択要素情報 */
+        .selected-element-info {
+            color: #9E9E9E;
+            font-size: 12px;
+            margin: 8px 0;
+            font-style: italic;
+        }
+        
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .terminal-container.right {
+                width: 100%;
+                top: 56px;
+            }
+            
+            .terminal-container.bottom {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <div class="header">
+        <div class="header-left">
+            <div class="project-name">新規プロジェクト</div>
+            <div class="save-indicator">
+                <span class="material-icons" style="font-size: 16px;">check_circle</span>
+                <span>保存済み</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="terminal-toggle-btn" id="terminalToggleBtn">
+                <span class="material-icons" style="font-size: 18px;">terminal</span>
+                <span>ClaudeCode</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- メインコンテナ -->
+    <div class="main-container">
+        <!-- エディタービュー -->
+        <div class="editor-view" id="editorView">
+            <div class="iframe-container">
+                <!-- レプリカ表示用iframe -->
+                <iframe id="replica-frame" src="about:blank"></iframe>
+                
+                <!-- 要素選択オーバーレイ -->
+                <div class="element-overlay" id="elementOverlay"></div>
+                
+                <!-- 浮動ツールバー -->
+                <div class="floating-toolbar" id="floatingToolbar">
+                    <button class="toolbar-btn" id="textEditBtn">
+                        <span class="material-icons">edit</span>
+                        <span>テキストを直接編集</span>
+                    </button>
+                    <button class="toolbar-btn" id="imageReplaceBtn">
+                        <span class="material-icons">image</span>
+                        <span>画像を差し替え</span>
+                    </button>
+                    <button class="toolbar-btn" id="aiEditBtn">
+                        <span class="material-icons">auto_fix_high</span>
+                        <span>ClaudeCodeで編集</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ClaudeCodeターミナル -->
+        <div class="terminal-container bottom" id="terminalContainer">
+            <div class="terminal-header">
+                <div class="terminal-title">
+                    <span class="material-icons" style="font-size: 16px;">terminal</span>
+                    <span>ClaudeCode Terminal</span>
+                </div>
+                <div class="terminal-controls">
+                    <button class="terminal-control-btn" id="terminalPositionBtn" title="位置を切り替え">
+                        <span class="material-icons">swap_horiz</span>
+                    </button>
+                    <button class="terminal-control-btn" id="terminalMinimizeBtn" title="最小化">
+                        <span class="material-icons">minimize</span>
+                    </button>
+                    <button class="terminal-control-btn" id="terminalCloseBtn" title="閉じる">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            <div class="terminal-body" id="terminalBody">
+                <div class="terminal-output">
+                    <span class="terminal-prompt">$</span><span class="terminal-command">claude</span>
+                </div>
+                <div class="terminal-output">
+                    <div class="terminal-response">Claude Code v1.0.0
+Type 'help' for available commands</div>
+                </div>
+                <div class="selected-element-info" id="selectedElementContext" style="display: none;"></div>
+                <div class="terminal-input-line">
+                    <span class="terminal-prompt">></span>
+                    <input type="text" class="terminal-input" id="terminalInput" autofocus>
+                    <span class="terminal-cursor"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // モックデータ - 実際のレプリカコンテンツ（iframeの代わりにdivで表示）
+        const mockReplicaContent = `
+            <style>
+                .mock-body { font-family: Arial, sans-serif; margin: 0; }
+                .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 80px 20px; text-align: center; }
+                .hero h1 { font-size: 48px; margin-bottom: 20px; }
+                .hero p { font-size: 20px; margin-bottom: 30px; }
+                .cta-button { background: white; color: #667eea; padding: 15px 40px; 
+                             border-radius: 30px; text-decoration: none; font-weight: bold; 
+                             display: inline-block; }
+                .features { padding: 60px 20px; max-width: 1200px; margin: 0 auto; }
+                .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+                               gap: 40px; margin-top: 40px; }
+                .feature-card { text-align: center; }
+                .feature-icon { width: 80px; height: 80px; background: #667eea; 
+                               border-radius: 50%; margin: 0 auto 20px; }
+            </style>
+            <div class="mock-body">
+                <section class="hero">
+                    <h1>革新的なソリューションを提供</h1>
+                    <p>あなたのビジネスを次のレベルへ</p>
+                    <a href="#" class="cta-button">今すぐ始める</a>
+                </section>
+                <section class="features">
+                    <h2 style="text-align: center; font-size: 36px;">私たちの特徴</h2>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon"></div>
+                            <h3>高速処理</h3>
+                            <p>業界最速の処理速度で効率的な作業を実現</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon"></div>
+                            <h3>セキュア</h3>
+                            <p>最新のセキュリティ技術でデータを保護</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon"></div>
+                            <h3>24/7サポート</h3>
+                            <p>いつでもプロフェッショナルなサポートを提供</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        `;
+        
+        // iframe の代わりに div を使用してモックコンテンツを表示
+        window.addEventListener('DOMContentLoaded', function() {
+            const replicaFrame = document.getElementById('replica-frame');
+            // iframeを非表示にしてdivで置き換え
+            replicaFrame.style.display = 'none';
+            
+            const mockContainer = document.createElement('div');
+            mockContainer.id = 'mock-container';
+            mockContainer.style.cssText = 'width: 100%; height: 100%; overflow: auto; background: white;';
+            mockContainer.innerHTML = mockReplicaContent;
+            
+            replicaFrame.parentNode.insertBefore(mockContainer, replicaFrame);
+            
+            // モック要素にイベントリスナーを設定
+            setupMockInteraction();
+            
+            // ターミナル関連のイベント設定
+            setupTerminal();
+        });
+        
+        let selectedElement = null;
+        let terminalPosition = 'bottom';
+        let isTerminalMinimized = false;
+        let overlay, toolbar, terminalContainer, editorView, terminalInput, terminalBody, selectedElementContext;
+        
+        // DOM要素の初期化を遅延
+        window.addEventListener('DOMContentLoaded', function() {
+            overlay = document.getElementById('elementOverlay');
+            toolbar = document.getElementById('floatingToolbar');
+            terminalContainer = document.getElementById('terminalContainer');
+            editorView = document.getElementById('editorView');
+            terminalInput = document.getElementById('terminalInput');
+            terminalBody = document.getElementById('terminalBody');
+            selectedElementContext = document.getElementById('selectedElementContext');
+        });
+        
+        function setupMockInteraction() {
+            const mockContainer = document.getElementById('mock-container');
+            
+            // すべての要素にホバーイベントを設定
+            mockContainer.addEventListener('mouseover', function(e) {
+                if (e.target !== mockContainer && !e.target.classList.contains('mock-body')) {
+                    showOverlay(e.target);
+                }
+            });
+            
+            // クリックイベント
+            mockContainer.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (e.target !== mockContainer && !e.target.classList.contains('mock-body')) {
+                    selectElement(e.target);
+                }
+            });
+        }
+        
+        function setupTerminal() {
+            // ターミナル表示トグル
+            document.getElementById('terminalToggleBtn').addEventListener('click', function() {
+                terminalContainer.classList.toggle('active');
+                updateEditorViewLayout();
+                if (terminalContainer.classList.contains('active')) {
+                    terminalInput.focus();
+                }
+            });
+            
+            // ターミナル位置切り替え
+            document.getElementById('terminalPositionBtn').addEventListener('click', function() {
+                terminalPosition = terminalPosition === 'bottom' ? 'right' : 'bottom';
+                terminalContainer.classList.remove('bottom', 'right');
+                terminalContainer.classList.add(terminalPosition);
+                updateEditorViewLayout();
+            });
+            
+            // ターミナル最小化
+            document.getElementById('terminalMinimizeBtn').addEventListener('click', function() {
+                isTerminalMinimized = !isTerminalMinimized;
+                terminalContainer.classList.toggle('minimized');
+                this.querySelector('.material-icons').textContent = isTerminalMinimized ? 'maximize' : 'minimize';
+            });
+            
+            // ターミナル閉じる
+            document.getElementById('terminalCloseBtn').addEventListener('click', function() {
+                terminalContainer.classList.remove('active');
+                updateEditorViewLayout();
+            });
+            
+            // ターミナル入力処理
+            terminalInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const command = this.value.trim();
+                    if (command) {
+                        executeTerminalCommand(command);
+                        this.value = '';
+                    }
+                }
+            });
+        }
+        
+        function updateEditorViewLayout() {
+            editorView.classList.remove('with-terminal-bottom', 'with-terminal-right');
+            if (terminalContainer.classList.contains('active')) {
+                if (terminalPosition === 'bottom') {
+                    editorView.classList.add('with-terminal-bottom');
+                } else {
+                    editorView.classList.add('with-terminal-right');
+                }
+            }
+        }
+        
+        function showOverlay(element) {
+            if (!overlay) return;
+            const rect = element.getBoundingClientRect();
+            
+            overlay.style.left = rect.left + 'px';
+            overlay.style.top = rect.top + 'px';
+            overlay.style.width = rect.width + 'px';
+            overlay.style.height = rect.height + 'px';
+            overlay.classList.add('active');
+        }
+        
+        function getElementSelector(element) {
+            // 要素のセレクタを生成
+            let selector = element.tagName.toLowerCase();
+            if (element.id) {
+                selector += `#${element.id}`;
+            } else if (element.className) {
+                selector += `.${element.className.split(' ')[0]}`;
+            }
+            return selector;
+        }
+        
+        function getElementInfo(element) {
+            // 要素の詳細情報を取得
+            const computedStyle = window.getComputedStyle(element);
+            return {
+                selector: getElementSelector(element),
+                tagName: element.tagName.toLowerCase(),
+                text: element.textContent.trim(),
+                html: element.outerHTML,
+                styles: {
+                    color: computedStyle.color,
+                    backgroundColor: computedStyle.backgroundColor,
+                    fontSize: computedStyle.fontSize,
+                    fontFamily: computedStyle.fontFamily
+                }
+            };
+        }
+        
+        function selectElement(element) {
+            if (!toolbar) return;
+            selectedElement = element;
+            showOverlay(element);
+            
+            // ツールバーを表示
+            const rect = element.getBoundingClientRect();
+            
+            toolbar.style.left = rect.left + 'px';
+            toolbar.style.top = (rect.top - 120) + 'px';
+            toolbar.classList.add('active');
+            
+            // 要素情報を更新
+            const elementData = getElementInfo(element);
+            const displayText = elementData.text.substring(0, 50);
+            
+            // ターミナルに要素情報を表示
+            if (terminalContainer.classList.contains('active')) {
+                selectedElementContext.textContent = `// 選択中の要素: <${elementData.tagName}> "${displayText}${displayText.length < elementData.text.length ? '...' : ''}"`;
+                selectedElementContext.style.display = 'block';
+            }
+        }
+        
+        function executeTerminalCommand(command) {
+            // コマンドを表示
+            const commandOutput = document.createElement('div');
+            commandOutput.className = 'terminal-output';
+            commandOutput.innerHTML = `<span class="terminal-prompt">></span><span class="terminal-command">${command}</span>`;
+            terminalBody.insertBefore(commandOutput, terminalBody.lastElementChild);
+            
+            // モックの応答を生成
+            const responseOutput = document.createElement('div');
+            responseOutput.className = 'terminal-output';
+            
+            if (command.includes('変更') || command.includes('編集')) {
+                responseOutput.innerHTML = `<div class="terminal-response">了解しました。現在の要素を分析中...
+
+選択された要素: ${selectedElement ? getElementSelector(selectedElement) : 'なし'}
+${selectedElement ? '編集を実行しています...' : '要素を選択してください。'}
+
+${selectedElement ? '✓ 編集が完了しました。' : ''}</div>`;
+                
+                // 実際に要素を変更（デモ用）
+                if (selectedElement && command.includes('変更')) {
+                    selectedElement.style.backgroundColor = '#e8f5e9';
+                    selectedElement.style.transition = 'all 0.3s';
+                    setTimeout(() => {
+                        selectedElement.style.backgroundColor = '';
+                    }, 1000);
+                }
+            } else if (command === 'help') {
+                responseOutput.innerHTML = `<div class="terminal-response">利用可能なコマンド:
+- help: このヘルプを表示
+- clear: ターミナルをクリア
+- [編集指示]: 選択した要素を編集（例: "ヘッダーのテキストを変更して"）</div>`;
+            } else if (command === 'clear') {
+                // ターミナルをクリア
+                while (terminalBody.firstChild && terminalBody.firstChild !== terminalBody.lastElementChild) {
+                    terminalBody.removeChild(terminalBody.firstChild);
+                }
+                return;
+            } else {
+                responseOutput.innerHTML = `<div class="terminal-response">コマンドを処理中...
+"${command}" を実行します。</div>`;
+            }
+            
+            terminalBody.insertBefore(responseOutput, terminalBody.lastElementChild);
+            
+            // スクロールを最下部に
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+        
+        // ツールバーボタンのイベント
+        window.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('textEditBtn').addEventListener('click', function() {
+                if (selectedElement) {
+                    // テキスト直接編集モード（実装では contentEditable を使用）
+                    selectedElement.contentEditable = true;
+                    selectedElement.focus();
+                    toolbar.classList.remove('active');
+                }
+            });
+            
+            document.getElementById('imageReplaceBtn').addEventListener('click', function() {
+                if (selectedElement) {
+                    // 画像差し替えダイアログ（実装ではファイル選択）
+                    const newUrl = prompt('新しい画像URLを入力してください：');
+                    if (newUrl && selectedElement.tagName === 'IMG') {
+                        selectedElement.src = newUrl;
+                    }
+                    toolbar.classList.remove('active');
+                }
+            });
+            
+            document.getElementById('aiEditBtn').addEventListener('click', function() {
+                // ClaudeCodeターミナルを開く
+                terminalContainer.classList.add('active');
+                updateEditorViewLayout();
+                terminalInput.focus();
+                
+                // 選択要素の情報を自動的にコンテキストに追加
+                if (selectedElement) {
+                    const elementData = getElementInfo(selectedElement);
+                    selectedElementContext.textContent = `// 選択中の要素: <${elementData.tagName}> "${elementData.text.substring(0, 50)}..."`;
+                    selectedElementContext.style.display = 'block';
+                }
+            });
+        });
+        
+        // クリック外でパネルを閉じる
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.toolbar-btn') && 
+                !e.target.closest('#mock-container')) {
+                if (toolbar) toolbar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
