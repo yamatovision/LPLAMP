@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
-import { Project } from '@/types';
+import { Project, ProjectCreate } from '@/types';
+import GitHubIntegrationOptions from '@/components/features/github/GitHubIntegrationOptions';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newProjectUrl, setNewProjectUrl] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [showGitHubOptions, setShowGitHubOptions] = useState(false);
+  const [gitHubOptions, setGitHubOptions] = useState<any>(null);
 
   useEffect(() => {
     loadProjects();
@@ -34,11 +37,30 @@ export default function Dashboard() {
     setIsCreating(true);
     try {
       const { projectsService } = await import('@/services');
-      const response = await projectsService.createProject(newProjectUrl);
+      
+      // GitHub連携オプションを含めたプロジェクト作成データ
+      const projectData: ProjectCreate = {
+        url: newProjectUrl,
+        ...gitHubOptions
+      };
+      
+      const response = await projectsService.createProject(projectData);
+      
+      console.log('Dashboard: プロジェクト作成レスポンス:', response);
+      console.log('Dashboard: response.data:', response.data);
+      console.log('Dashboard: projectId:', response.data?.projectId);
       
       setNewProjectUrl('');
+      setGitHubOptions(null);
+      setShowGitHubOptions(false);
       
-      window.location.href = `/editor/${response.projectId}`;
+      if (response.data?.projectId) {
+        console.log('Dashboard: エディターにリダイレクト中:', response.data.projectId);
+        window.location.href = `/editor/${response.data.projectId}`;
+      } else {
+        console.error('Dashboard: projectIdが取得できませんでした');
+        console.error('Dashboard: レスポンス構造:', JSON.stringify(response, null, 2));
+      }
     } catch (error) {
       console.error('プロジェクトの作成に失敗:', error);
     } finally {
@@ -72,22 +94,47 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               新しいプロジェクトを開始
             </h2>
-            <form onSubmit={handleCreateProject} className="flex gap-4">
-              <input
-                type="url"
-                value={newProjectUrl}
-                onChange={(e) => setNewProjectUrl(e.target.value)}
-                placeholder="https://example.com"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-              <button
-                type="submit"
-                disabled={isCreating || !newProjectUrl}
-                className="px-6 py-3 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreating ? '作成中...' : '作成開始'}
-              </button>
+            <form onSubmit={handleCreateProject}>
+              {/* 基本URL入力 */}
+              <div className="flex gap-4 mb-4">
+                <input
+                  type="url"
+                  value={newProjectUrl}
+                  onChange={(e) => setNewProjectUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isCreating || !newProjectUrl}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? '作成中...' : '作成開始'}
+                </button>
+              </div>
+              
+              {/* GitHub連携オプション（段階的開示） */}
+              <div className="border-t pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowGitHubOptions(!showGitHubOptions)}
+                  className="flex items-center text-sm text-gray-600 hover:text-gray-800"
+                >
+                  <span className="mr-2">
+                    {showGitHubOptions ? '▼' : '▶'}
+                  </span>
+                  GitHub連携オプション（自動デプロイ）
+                </button>
+                
+                {showGitHubOptions && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <GitHubIntegrationOptions
+                      onOptionsChange={setGitHubOptions}
+                    />
+                  </div>
+                )}
+              </div>
             </form>
           </div>
 

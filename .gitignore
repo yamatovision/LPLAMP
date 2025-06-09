@@ -39,3 +39,4 @@ Thumbs.db
 # AppGenius一時ファイル
 .appgenius_temp/
 .claude_data/
+.claude/

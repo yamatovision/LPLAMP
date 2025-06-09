@@ -443,6 +443,117 @@ export class GitHubService {
   }
 
   /**
+   * GitHub認証の開始（OAuth URLの生成）
+   */
+  static async initiateAuth(scopes: string[] = ['repo']): Promise<{ authUrl: string }> {
+    const startTime = Date.now();
+    
+    try {
+      logger.info('GitHub 認証開始URL生成開始', {
+        component: 'GitHubService',
+        operation: 'initiateAuth',
+        scopes
+      });
+
+      const clientId = process.env['GITHUB_CLIENT_ID'];
+      const callbackUrl = process.env['GITHUB_CALLBACK_URL'] || 'http://localhost:8080/api/auth/github/callback';
+      
+      if (!clientId) {
+        throw new Error('GitHub Client IDが設定されていません');
+      }
+
+      const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const scopeString = scopes.join(' ');
+      
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        scope: scopeString,
+        state: state,
+      });
+
+      const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+
+      const duration = Date.now() - startTime;
+      logger.info('GitHub 認証開始URL生成完了', {
+        component: 'GitHubService',
+        operation: 'initiateAuth',
+        scopes,
+        duration: `${duration}ms`
+      });
+
+      return { authUrl };
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      logger.error('GitHub 認証開始URL生成エラー', {
+        component: 'GitHubService',
+        operation: 'initiateAuth',
+        error: error.message,
+        duration: `${duration}ms`
+      });
+      
+      throw new Error(`認証開始の準備に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
+   * リポジトリのブランチ一覧取得
+   */
+  static async getBranches(userId: string, owner: string, repo: string): Promise<Array<{ name: string; sha: string; protected: boolean }>> {
+    const startTime = Date.now();
+    
+    try {
+      logger.info('GitHub ブランチ一覧取得開始', {
+        component: 'GitHubService',
+        operation: 'getBranches',
+        userId,
+        owner,
+        repo
+      });
+
+      const authInfo = await GitHubAuthRepository.getAuthInfo(userId);
+      if (!authInfo) {
+        const error = new Error('GitHub認証が必要です');
+        (error as any).statusCode = 401;
+        throw error;
+      }
+
+      const githubRepo = new GitHubRepository(authInfo.accessToken);
+      const branches = await githubRepo.getBranches(owner, repo);
+
+      const duration = Date.now() - startTime;
+      logger.info('GitHub ブランチ一覧取得完了', {
+        component: 'GitHubService',
+        operation: 'getBranches',
+        userId,
+        owner,
+        repo,
+        branchCount: branches.length,
+        duration: `${duration}ms`
+      });
+
+      return branches;
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      logger.error('GitHub ブランチ一覧取得エラー', {
+        component: 'GitHubService',
+        operation: 'getBranches',
+        userId,
+        owner,
+        repo,
+        error: error.message,
+        duration: `${duration}ms`
+      });
+      
+      if (error.message.includes('GitHub認証が必要')) {
+        throw error;
+      }
+      
+      throw new Error(`ブランチ一覧の取得に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
    * 認証済みユーザーの情報を取得
    */
   static async getUserInfo(userId: string): Promise<{ username: string; email?: string }> {

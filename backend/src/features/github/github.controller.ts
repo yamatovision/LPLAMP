@@ -509,6 +509,159 @@ export const setAuthToken = async (req: Request, res: Response<ApiResponse<GitHu
 };
 
 /**
+ * GitHub認証開始
+ * POST /api/github/connect
+ */
+export const initiateAuth = async (req: Request, res: Response<ApiResponse<{ authUrl: string }>>) => {
+  const requestId = Math.random().toString(36).substring(7);
+  const startTime = Date.now();
+
+  try {
+    logger.info('GitHub 認証開始', {
+      component: 'GitHubController',
+      operation: 'initiateAuth',
+      requestId,
+      ip: req.ip
+    });
+
+    const { scopes } = req.body;
+    const authResult = await GitHubService.initiateAuth(scopes);
+
+    const duration = Date.now() - startTime;
+    logger.info('GitHub 認証開始完了', {
+      component: 'GitHubController',
+      operation: 'initiateAuth',
+      requestId,
+      duration: `${duration}ms`
+    });
+
+    return res.json({
+      success: true,
+      data: authResult,
+      meta: {
+        requestId,
+        message: 'GitHub認証URLが生成されました'
+      }
+    });
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    logger.error('GitHub 認証開始エラー', {
+      component: 'GitHubController',
+      operation: 'initiateAuth',
+      requestId,
+      error: error.message,
+      stack: error.stack,
+      duration: `${duration}ms`
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      meta: {
+        requestId,
+        code: 'GITHUB_AUTH_INITIATE_ERROR'
+      }
+    });
+  }
+};
+
+/**
+ * リポジトリのブランチ一覧取得
+ * GET /api/github/repos/:owner/:repo/branches
+ */
+export const getBranches = async (req: Request, res: Response<ApiResponse<{ branches: Array<{ name: string; sha: string; protected: boolean }> }>>) => {
+  const requestId = Math.random().toString(36).substring(7);
+  const startTime = Date.now();
+
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      logger.warn('GitHub ブランチ一覧取得: 未認証リクエスト', {
+        component: 'GitHubController',
+        operation: 'getBranches',
+        requestId,
+        ip: req.ip
+      });
+      
+      return res.status(401).json({
+        success: false,
+        error: '認証が必要です'
+      });
+    }
+
+    const { owner, repo } = req.params;
+    if (!owner || !repo) {
+      return res.status(400).json({
+        success: false,
+        error: 'ownerとrepoが必要です',
+        meta: {
+          requestId,
+          code: 'MISSING_PARAMETERS'
+        }
+      });
+    }
+
+    logger.info('GitHub ブランチ一覧取得開始', {
+      component: 'GitHubController',
+      operation: 'getBranches',
+      requestId,
+      userId,
+      owner,
+      repo,
+      ip: req.ip
+    });
+
+    const branches = await GitHubService.getBranches(userId, owner, repo);
+
+    const duration = Date.now() - startTime;
+    logger.info('GitHub ブランチ一覧取得完了', {
+      component: 'GitHubController',
+      operation: 'getBranches',
+      requestId,
+      userId,
+      owner,
+      repo,
+      branchCount: branches.length,
+      duration: `${duration}ms`
+    });
+
+    return res.json({
+      success: true,
+      data: { branches },
+      meta: {
+        count: branches.length,
+        requestId
+      }
+    });
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    logger.error('GitHub ブランチ一覧取得エラー', {
+      component: 'GitHubController',
+      operation: 'getBranches',
+      requestId,
+      userId: req.user?.id,
+      owner: req.params?.owner,
+      repo: req.params?.repo,
+      error: error.message,
+      stack: error.stack,
+      duration: `${duration}ms`
+    });
+
+    const statusCode = error.statusCode || (error.message.includes('GitHub認証が必要') ? 401 : 500);
+    const errorCode = error.message.includes('GitHub認証が必要') ? 'GITHUB_AUTH_REQUIRED' : 'GITHUB_BRANCHES_FETCH_ERROR';
+
+    return res.status(statusCode).json({
+      success: false,
+      error: error.message,
+      meta: {
+        requestId,
+        code: errorCode
+      }
+    });
+  }
+};
+
+/**
  * GitHub認証解除
  * DELETE /api/github/auth
  */

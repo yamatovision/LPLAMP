@@ -11,7 +11,7 @@ import {
   AuthStatusResponse, 
   LoginResponse 
 } from '../../types/index.js';
-import { authService, AuthServiceError } from './auth.service.js';
+import { getAuthService, AuthServiceError } from './auth.service.js';
 import { getAuthenticatedUser } from '../../common/middlewares/auth.middleware.js';
 import { logger, PerformanceLogger } from '../../common/utils/logger.js';
 
@@ -97,15 +97,14 @@ export async function getAuthStatus(req: Request, res: Response): Promise<void> 
     const userId = authenticatedUser?.id;
 
     // 認証状態を取得
-    const authStatus = await authService.getAuthStatus(userId);
+    const authStatus = await getAuthService().getAuthStatus(userId);
     
     perfLog.end({
-      authenticated: authStatus.authenticated,
-      userId: authStatus.user?.id,
+      authenticated: authStatus.data?.authenticated,
+      userId: authStatus.data?.user?.id,
     });
 
-    const response = createSuccessResponse<AuthStatusResponse>(authStatus);
-    res.json(response);
+    res.json(authStatus);
   } catch (error) {
     perfLog.error(error as Error);
     
@@ -118,19 +117,29 @@ export async function getAuthStatus(req: Request, res: Response): Promise<void> 
  * GitHub認証開始
  * GET /api/auth/github/login
  */
-export async function startGitHubAuth(_req: Request, res: Response): Promise<void> {
+export async function startGitHubAuth(req: Request, res: Response): Promise<void> {
   const perfLog = new PerformanceLogger('GitHub認証開始');
   
   try {
     // GitHub認証URLを生成
-    const loginResponse = authService.generateGitHubAuthUrl();
+    const loginResponse = getAuthService().generateGitHubAuthUrl();
     
     perfLog.end({
       redirectUrl: loginResponse.redirectUrl,
     });
 
-    const response = createSuccessResponse<LoginResponse>(loginResponse);
-    res.json(response);
+    // Accept ヘッダーをチェックしてAPIリクエストかブラウザリクエストかを判定
+    const acceptHeader = req.headers.accept || '';
+    const isJsonRequest = acceptHeader.includes('application/json');
+    
+    if (isJsonRequest) {
+      // APIリクエストの場合はJSONレスポンスを返す
+      const response = createSuccessResponse<LoginResponse>(loginResponse);
+      res.json(response);
+    } else {
+      // ブラウザからの直接アクセスの場合はリダイレクト
+      res.redirect(loginResponse.redirectUrl);
+    }
   } catch (error) {
     perfLog.error(error as Error);
     
@@ -168,10 +177,10 @@ export async function handleGitHubCallback(req: Request, res: Response): Promise
     }
 
     // OAuth認証処理
-    const oauthResult = await authService.processGitHubCallback(code, state as string);
+    const oauthResult = await getAuthService().processGitHubCallback(code, state as string);
     
     // JWTトークン生成
-    const authSession = await authService.createAuthSession(oauthResult.user);
+    const authSession = await getAuthService().createAuthSession(oauthResult.user);
     
     // フロントエンドURL（リダイレクト先）
     const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:3000';
@@ -230,7 +239,7 @@ export async function logout(req: Request, res: Response): Promise<void> {
     }
 
     // ログアウト処理
-    await authService.logout(authenticatedUser.id);
+    await getAuthService().logout(authenticatedUser.id);
     
     perfLog.end({
       userId: authenticatedUser.id,
@@ -268,7 +277,7 @@ export async function getCurrentUser(req: Request, res: Response): Promise<void>
     }
 
     // 最新のユーザー情報を取得
-    const authStatus = await authService.getAuthStatus(authenticatedUser.id);
+    const authStatus = await getAuthService().getAuthStatus(authenticatedUser.id);
     
     if (!authStatus.authenticated || !authStatus.user) {
       throw new AuthControllerError(

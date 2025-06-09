@@ -56,6 +56,12 @@ export const createGitHubRoutes = (): Router => {
   router.post('/auth/token', githubController.setAuthToken);
 
   /**
+   * GitHub認証開始
+   * POST /api/github/connect
+   */
+  router.post('/connect', githubController.initiateAuth);
+
+  /**
    * GitHub認証解除
    * DELETE /api/github/auth
    */
@@ -78,6 +84,15 @@ export const createGitHubRoutes = (): Router => {
     createRepoLimiter,
     validateCreateRepository,
     githubController.createRepository
+  );
+
+  /**
+   * リポジトリのブランチ一覧取得
+   * GET /api/github/repos/:owner/:repo/branches
+   */
+  router.get('/repos/:owner/:repo/branches',
+    listReposLimiter,
+    githubController.getBranches
   );
 
   /**

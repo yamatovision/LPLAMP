@@ -11,8 +11,11 @@ import {
   HistorySnapshot,
   PaginatedResponse,
   ApiResponse,
-  API_PATHS 
+  API_PATHS,
+  ID,
+  EditChanges 
 } from '@/types';
+import { logger } from '@/utils/logger';
 
 /**
  * 履歴作成リクエスト
@@ -92,3 +95,97 @@ export const historyApiService = {
     return response;
   }
 };
+
+/**
+ * 自動保存サービスクラス（フロントエンド側）
+ */
+export class AutoSaveService {
+  /**
+   * 自動保存のスケジュール（デバウンス付き）
+   */
+  async scheduleAutoSave(projectId: ID, changes: EditChanges): Promise<void> {
+    try {
+      logger.debug('自動保存スケジュール開始', { 
+        projectId, 
+        changedFileCount: changes.changedFiles.length 
+      });
+
+      // バックエンドの自動保存エンドポイントを呼び出し
+      // 実際の実装では、WebSocket経由でバックエンドのAutoSaveServiceに送信
+      await this.sendAutoSaveRequest(projectId, changes, false);
+
+      logger.info('自動保存スケジュール完了', { projectId });
+    } catch (error) {
+      logger.error('自動保存スケジュールエラー', { 
+        projectId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 明示的保存（Ctrl+S等）
+   */
+  async explicitSave(projectId: ID, changes: EditChanges): Promise<void> {
+    try {
+      logger.info('明示的保存開始', { projectId });
+
+      // バックエンドの明示的保存エンドポイントを呼び出し
+      await this.sendAutoSaveRequest(projectId, changes, true);
+
+      logger.info('明示的保存完了', { projectId });
+    } catch (error) {
+      logger.error('明示的保存エラー', { 
+        projectId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * 自動保存リクエストの送信
+   */
+  private async sendAutoSaveRequest(
+    projectId: ID, 
+    changes: EditChanges, 
+    isExplicit: boolean
+  ): Promise<void> {
+    try {
+      // TODO: 実際の実装では以下のいずれかの方法でバックエンドと連携
+      // 1. WebSocket経由でリアルタイム送信
+      // 2. 専用のREST APIエンドポイント
+      // 3. バックグラウンドタスクキューへの追加
+
+      // 仮実装：REST APIエンドポイント経由
+      const endpoint = isExplicit 
+        ? `/api/projects/${projectId}/save/explicit`
+        : `/api/projects/${projectId}/save/auto`;
+
+      await apiClient.post(endpoint, {
+        changes,
+        timestamp: new Date().toISOString()
+      });
+
+      logger.debug('自動保存リクエスト送信完了', { 
+        projectId, 
+        isExplicit,
+        endpoint 
+      });
+
+    } catch (error) {
+      logger.error('自動保存リクエスト送信エラー', { 
+        projectId, 
+        isExplicit,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+}
+
+/**
+ * 自動保存サービスインスタンス
+ */
+export const autoSaveService = new AutoSaveService();

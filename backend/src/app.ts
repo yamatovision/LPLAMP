@@ -18,7 +18,7 @@ const app = express();
 // セキュリティミドルウェア
 app.use(helmet());
 app.use(cors({
-  origin: process.env['FRONTEND_URL'] || 'http://localhost:5173',
+  origin: process.env['FRONTEND_URL'] || 'http://localhost:3000',
   credentials: true
 }));
 
@@ -31,6 +31,16 @@ app.use(morgan('combined', {
 
 // Cookieパーサー
 app.use(cookieParser());
+
+// 静的ファイル配信（レプリカアセット用）
+app.use('/replica-assets', express.static('/tmp/lplamp-projects', {
+  setHeaders: (res, path) => {
+    // アセットファイルのキャッシュ設定
+    if (path.match(/\.(jpg|jpeg|png|gif|webp|svg|css|js)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 24時間キャッシュ
+    }
+  }
+}));
 
 // JSONパーサー
 app.use(express.json({ limit: '10mb' }));

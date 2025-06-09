@@ -5,10 +5,12 @@ import { useParams, Link } from 'react-router-dom';
 interface EditorLayoutProps {
   children: ReactNode;
   projectName?: string;
-  saveStatus?: 'saved' | 'saving' | 'error';
+  saveStatus?: 'idle' | 'saved' | 'saving' | 'error';
+  lastSaved?: Date | null;
+  isSaving?: boolean;
 }
 
-export default function EditorLayout({ children, projectName, saveStatus = 'saved' }: EditorLayoutProps) {
+export default function EditorLayout({ children, projectName, saveStatus = 'saved', lastSaved, isSaving }: EditorLayoutProps) {
   const { user, logout } = useAuth();
   const { projectId } = useParams();
   const [isTerminalVisible, setIsTerminalVisible] = useState(false);
@@ -19,8 +21,11 @@ export default function EditorLayout({ children, projectName, saveStatus = 'save
         return <span className="text-yellow-600">保存中...</span>;
       case 'error':
         return <span className="text-red-600">保存エラー</span>;
-      default:
+      case 'saved':
         return <span className="text-green-600">保存済み</span>;
+      case 'idle':
+      default:
+        return <span className="text-gray-600">待機中</span>;
     }
   };
 

@@ -530,7 +530,7 @@ export class AuthService {
    */
   async getAuthStatus(userId?: string): Promise<AuthStatusResponse> {
     if (!userId) {
-      return { authenticated: false };
+      return { success: true, data: { authenticated: false } };
     }
 
     try {
@@ -538,12 +538,15 @@ export class AuthService {
       
       if (!user) {
         logger.warn('認証状態確認: ユーザーが見つかりません', { userId });
-        return { authenticated: false };
+        return { success: true, data: { authenticated: false } };
       }
 
       return {
-        authenticated: true,
-        user: toPublicUser(user),
+        success: true,
+        data: {
+          authenticated: true,
+          user: toPublicUser(user),
+        }
       };
     } catch (error) {
       logger.error('認証状態確認エラー', {
@@ -551,7 +554,7 @@ export class AuthService {
         error: error instanceof Error ? error.message : String(error),
       });
       
-      return { authenticated: false };
+      return { success: true, data: { authenticated: false } };
     }
   }
 
@@ -591,6 +594,23 @@ export class AuthService {
 }
 
 /**
- * デフォルト認証サービスインスタンス
+ * デフォルト認証サービスインスタンス（遅延初期化）
  */
-export const authService = new AuthService();
+let _authServiceInstance: AuthService | null = null;
+
+export function getAuthService(): AuthService {
+  if (!_authServiceInstance) {
+    _authServiceInstance = new AuthService();
+  }
+  return _authServiceInstance;
+}
+
+/**
+ * 後方互換性のためのエクスポート
+ * @deprecated getAuthService()を使用してください
+ */
+export const authService = {
+  get instance() {
+    return getAuthService();
+  }
+};

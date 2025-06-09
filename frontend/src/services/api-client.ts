@@ -3,7 +3,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {

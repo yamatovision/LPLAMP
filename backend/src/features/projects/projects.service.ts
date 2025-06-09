@@ -89,10 +89,15 @@ export class ProjectService {
         name: validatedData.name
       });
 
-      // プロジェクト作成
+      // プロジェクト作成（GitHub連携プロパティを含む）
       const project = await this.repository.create({
         ...validatedData,
-        userId: validatedUserId
+        userId: validatedUserId,
+        // GitHub連携情報（Phase 2で追加）
+        githubRepo: validatedData.githubRepo,
+        githubBranch: validatedData.githubBranch || 'main',
+        deployProvider: validatedData.deployProvider,
+        autoCommit: validatedData.autoCommit || false
       });
 
       // プロジェクトディレクトリの初期化
@@ -115,7 +120,10 @@ export class ProjectService {
 
       return {
         projectId: project.id,
-        status: 'processing'
+        status: 'processing',
+        // GitHub連携情報をレスポンスに含める
+        githubRepo: project.githubRepo,
+        deployUrl: project.deploymentUrl
       };
 
     } catch (error) {
@@ -517,29 +525,39 @@ export class ProjectService {
 
   /**
    * レプリカ作成処理開始（非同期）
-   * 実装は後の垂直スライスで行う
    */
   private async startReplicaCreation(projectId: ID, url: string): Promise<void> {
-    logger.info('レプリカ作成処理開始（プレースホルダー）', { projectId, url });
+    logger.info('レプリカ作成処理開始', { projectId, url });
     
-    // TODO: 後の垂直スライスで実装
-    // - Puppeteerによるスクレイピング
-    // - アセットの取得と保存
-    // - HTMLとCSSの抽出
-    
-    // デモ用: 3秒後にREADYステータスに更新
-    setTimeout(async () => {
+    // 非同期でレプリカを作成
+    setImmediate(async () => {
       try {
-        await this.repository.updateStatus(projectId, ProjectStatus.READY);
-        logger.info('レプリカ作成完了（デモ）', { projectId });
+        // Puppeteerでウェブサイトをレプリケート（JavaScript無効化）
+        const { WebsiteReplicator } = await import('../../common/utils/website-replicator.js');
+        const replicator = new WebsiteReplicator(url, undefined, true); // JavaScript無効化
+        const result = await replicator.replicate();
+        
+        if (result.success) {
+          // レプリカサービスを使ってデータベースに保存
+          const { replicaService } = await import('../replica/replica.service.js');
+          await replicaService.createReplica(projectId, result.html, result.css);
+          
+          // プロジェクトステータスをREADYに更新
+          await this.repository.updateStatus(projectId, ProjectStatus.READY);
+          logger.info('レプリカ作成完了', { projectId, url });
+        } else {
+          throw new Error(`レプリカ作成失敗: ${result.error}`);
+        }
+        
       } catch (error) {
-        logger.error('レプリカ作成完了処理でエラー', { 
+        logger.error('レプリカ作成でエラー', { 
           projectId, 
+          url,
           error: error instanceof Error ? error.message : String(error) 
         });
         await this.repository.updateStatus(projectId, ProjectStatus.ERROR);
       }
-    }, 3000);
+    });
   }
 
   /**

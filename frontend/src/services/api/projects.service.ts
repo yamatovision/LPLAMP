@@ -1,4 +1,4 @@
-import { Project, ProjectCreateResponse, ProjectStatusResponse, ApiResponse, API_PATHS } from '@/types';
+import { Project, ProjectCreate, ProjectCreateResponse, ProjectCreateResponseData, ProjectStatusResponse, ApiResponse, API_PATHS } from '@/types';
 import { apiClient } from '../api-client';
 
 export const projectsApiService = {
@@ -6,8 +6,10 @@ export const projectsApiService = {
     return apiClient.get<ApiResponse<{ projects: Project[] }>>(API_PATHS.PROJECTS.BASE);
   },
 
-  async createProject(url: string): Promise<ProjectCreateResponse> {
-    return apiClient.post<ProjectCreateResponse>(API_PATHS.PROJECTS.CREATE, { url });
+  async createProject(projectData: ProjectCreate | string): Promise<ProjectCreateResponse> {
+    // 後方互換性のために文字列も受け入れる
+    const data = typeof projectData === 'string' ? { url: projectData } : projectData;
+    return apiClient.post<ProjectCreateResponse>(API_PATHS.PROJECTS.CREATE, data);
   },
 
   async getProjectStatus(projectId: string): Promise<ProjectStatusResponse> {

@@ -71,17 +71,25 @@ export interface PaginatedResponse<T> {
 export interface ProjectCreate {
   url: string;
   name?: string;
+  // GitHub連携拡張
+  githubRepo?: string;
+  githubBranch?: string;
+  deployProvider?: DeployProvider;
+  autoCommit?: boolean;
 }
 
 /**
  * プロジェクト基本情報
  */
-export interface ProjectBase extends ProjectCreate {
+export interface ProjectBase extends Omit<ProjectCreate, 'name'> {
   name: string;
   thumbnail?: string | null;
   githubRepo?: string | null;
+  githubBranch?: string | null;
   deploymentUrl?: string | null;
   userId?: ID;  // 認証実装で追加
+  deployProvider?: DeployProvider;
+  autoCommit?: boolean;
 }
 
 /**
@@ -102,12 +110,20 @@ export enum ProjectStatus {
 }
 
 /**
- * プロジェクト作成レスポンス
+ * プロジェクト作成レスポンス（API応答データ部分）
  */
-export interface ProjectCreateResponse {
+export interface ProjectCreateResponseData {
   projectId: ID;
   status: 'processing';
+  // GitHub連携情報
+  githubRepo?: string;
+  deployUrl?: string;
 }
+
+/**
+ * プロジェクト作成レスポンス（完全なAPI応答）
+ */
+export type ProjectCreateResponse = ApiResponse<ProjectCreateResponseData>;
 
 /**
  * プロジェクトステータスレスポンス
@@ -274,11 +290,30 @@ export interface Export extends Timestamps {
 // ===== GitHub連携 =====
 
 /**
- * GitHub認証状態
+ * GitHub認証状態（API応答データ部分）
  */
-export interface GitHubAuthStatus {
+export interface GitHubAuthStatusData {
   authenticated: boolean;
   username?: string;
+  scopes?: string[];
+  expiresAt?: string;
+}
+
+/**
+ * GitHub認証状態（完全なAPI応答）
+ */
+export type GitHubAuthStatus = ApiResponse<GitHubAuthStatusData>;
+
+/**
+ * GitHub認証情報（データベース用）
+ */
+export interface GitHubAuth extends Timestamps {
+  id: ID;
+  userId: ID;
+  accessToken: string;          // 暗号化して保存
+  username: string;
+  scopes: string[];             // 権限スコープ
+  expiresAt?: string;           // トークン有効期限
 }
 
 /**
@@ -346,12 +381,17 @@ declare global {
 }
 
 /**
- * 認証状態レスポンス
+ * 認証状態レスポンス（API応答データ部分）
  */
-export interface AuthStatusResponse {
+export interface AuthStatusResponseData {
   authenticated: boolean;
   user?: User;
 }
+
+/**
+ * 認証状態レスポンス（完全なAPI応答）
+ */
+export type AuthStatusResponse = ApiResponse<AuthStatusResponseData>;
 
 /**
  * ログインレスポンス
@@ -479,6 +519,15 @@ export interface ProjectFile {
 }
 
 /**
+ * 編集変更情報
+ */
+export interface EditChanges {
+  description?: string;
+  changedFiles: ProjectFile[];
+  timestamp: string;
+}
+
+/**
  * プロジェクトファイル取得レスポンス
  */
 export interface ProjectFileResponse {
@@ -577,8 +626,10 @@ export const API_PATHS = {
   // GitHub関連
   GITHUB: {
     AUTH_STATUS: '/api/github/auth/status',
+    CONNECT: '/api/github/connect',
     REPOS: '/api/github/repos',
     REPOS_CREATE: '/api/github/repos/create',
+    BRANCHES: (owner: string, repo: string) => `/api/github/repos/${owner}/${repo}/branches`,
     PUSH: '/api/github/push',
   },
 

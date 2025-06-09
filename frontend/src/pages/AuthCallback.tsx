@@ -9,9 +9,15 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log('AuthCallback: コールバック処理開始');
+        console.log('AuthCallback: 現在のURL:', window.location.href);
+        
         // URLからエラーパラメータをチェック
         const params = new URLSearchParams(window.location.search);
         const error = params.get('error');
+        const status = params.get('status');
+        
+        console.log('AuthCallback: URLパラメータ', { error, status });
         
         if (error) {
           console.error('認証エラー:', error);
@@ -19,9 +25,11 @@ export default function AuthCallback() {
           return;
         }
 
+        console.log('AuthCallback: 認証状態確認を開始');
         // 認証状態を確認
         await checkAuthStatus();
         
+        console.log('AuthCallback: 認証状態確認完了、ダッシュボードへリダイレクト');
         // ダッシュボードへリダイレクト
         navigate('/', { replace: true });
       } catch (err) {

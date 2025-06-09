@@ -8,6 +8,22 @@ import {
   API_PATHS 
 } from '../../types';
 
+export interface RepoCreateRequest {
+  name: string;
+  description?: string;
+  private?: boolean;
+}
+
+export interface GitHubBranch {
+  name: string;
+  sha: string;
+  protected: boolean;
+}
+
+export interface AuthInitiateResponse {
+  authUrl: string;
+}
+
 /**
  * GitHub連携APIサービス
  * バックエンドのGitHub APIエンドポイントと連携
@@ -40,17 +56,39 @@ export const githubApiService = {
   },
 
   /**
+   * GitHub認証の開始
+   */
+  async initiateAuth(scopes: string[] = ['repo']): Promise<string> {
+    try {
+      const response = await apiClient.post<ApiResponse<AuthInitiateResponse>>(
+        API_PATHS.GITHUB.CONNECT,
+        { scopes }
+      );
+      
+      const apiResponse = response.data as unknown as ApiResponse<AuthInitiateResponse>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data.authUrl;
+      }
+      
+      throw new Error(apiResponse?.error || 'GitHub認証開始に失敗しました');
+    } catch (error: any) {
+      console.error('GitHub認証開始エラー:', error);
+      throw new Error(error.message || 'GitHub認証の開始に失敗しました');
+    }
+  },
+
+  /**
    * GitHubリポジトリ一覧取得
    */
   async getRepositories(): Promise<GitHubRepository[]> {
     try {
-      const response = await apiClient.get<ApiResponse<GitHubRepository[]>>(
+      const response = await apiClient.get<ApiResponse<{ repos: GitHubRepository[] }>>(
         API_PATHS.GITHUB.REPOS
       );
       
-      const apiResponse = response.data as unknown as ApiResponse<GitHubRepository[]>;
+      const apiResponse = response.data as unknown as ApiResponse<{ repos: GitHubRepository[] }>;
       if (apiResponse?.success && apiResponse?.data) {
-        return apiResponse.data;
+        return apiResponse.data.repos;
       }
       
       throw new Error(apiResponse?.error || 'リポジトリ一覧の取得に失敗しました');
@@ -72,15 +110,11 @@ export const githubApiService = {
   /**
    * 新規GitHubリポジトリ作成
    */
-  async createRepository(name: string, isPrivate = false): Promise<GitHubRepository> {
+  async createRepository(repoData: RepoCreateRequest): Promise<GitHubRepository> {
     try {
       const response = await apiClient.post<ApiResponse<GitHubRepository>>(
         API_PATHS.GITHUB.REPOS_CREATE,
-        {
-          name,
-          private: isPrivate,
-          description: `LPlamp project: ${name}`
-        }
+        repoData
       );
       
       const apiResponse = response.data as unknown as ApiResponse<GitHubRepository>;
@@ -105,6 +139,36 @@ export const githubApiService = {
       }
       
       throw new Error(error.message || 'リポジトリの作成に失敗しました');
+    }
+  },
+
+  /**
+   * リポジトリのブランチ一覧取得
+   */
+  async getBranches(owner: string, repo: string): Promise<GitHubBranch[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<{ branches: GitHubBranch[] }>>(
+        API_PATHS.GITHUB.BRANCHES(owner, repo)
+      );
+      
+      const apiResponse = response.data as unknown as ApiResponse<{ branches: GitHubBranch[] }>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data.branches;
+      }
+      
+      throw new Error(apiResponse?.error || 'ブランチ一覧の取得に失敗しました');
+    } catch (error: any) {
+      console.error('GitHubブランチ一覧取得エラー:', error);
+      
+      if (error.response?.status === 401) {
+        throw new Error('GitHub認証が必要です');
+      }
+      
+      if (error.response?.status === 404) {
+        throw new Error('指定されたリポジトリが見つかりません');
+      }
+      
+      throw new Error(error.message || 'ブランチ一覧の取得に失敗しました');
     }
   },
 
@@ -143,3 +207,7 @@ export const githubApiService = {
     }
   }
 };
+
+// 後方互換性のためのエクスポート
+export const githubService = githubApiService;
+export default githubApiService;

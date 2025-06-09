@@ -24,13 +24,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('AuthContext: 認証状態確認開始');
       setIsLoading(true);
       const { authService } = await import('@/services');
       const data = await authService.getAuthStatus();
       
-      if (data.authenticated && data.user) {
-        setUser(data.user);
+      console.log('AuthContext: 認証API レスポンス:', data);
+      
+      // APIレスポンスがラップされた形式の場合は data プロパティを展開
+      const authData = data.success ? data.data : data;
+      console.log('AuthContext: 認証データ:', authData);
+      
+      if (authData.authenticated && authData.user) {
+        console.log('AuthContext: 認証成功、ユーザー設定:', authData.user);
+        setUser(authData.user);
       } else {
+        console.log('AuthContext: 認証失敗またはユーザーなし');
         setUser(null);
       }
     } catch (error) {
@@ -38,6 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null);
     } finally {
       setIsLoading(false);
+      console.log('AuthContext: 認証状態確認完了、loading終了');
     }
   };
 
