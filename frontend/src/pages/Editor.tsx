@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import EditorLayout from '@/layouts/EditorLayout';
-import { MockIndicator, withMockPrefix } from '@/utils/mockIndicator';
 import { Project, Replica } from '@/types';
 
 export default function Editor() {
@@ -45,19 +44,16 @@ export default function Editor() {
 
   if (isLoading) {
     return (
-      <MockIndicator>
         <EditorLayout projectName="読み込み中...">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
           </div>
         </EditorLayout>
-      </MockIndicator>
     );
   }
 
   if (!project || !replica) {
     return (
-      <MockIndicator>
         <EditorLayout>
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
@@ -66,14 +62,13 @@ export default function Editor() {
             </div>
           </div>
         </EditorLayout>
-      </MockIndicator>
     );
   }
 
   return (
     <MockIndicator>
       <EditorLayout 
-        projectName={withMockPrefix(project.name)} 
+        projectName={project.name)} 
         saveStatus={saveStatus}
       >
         <div className="flex-1 bg-gray-100">
@@ -82,7 +77,7 @@ export default function Editor() {
             <div className="bg-white rounded-lg shadow-sm h-full overflow-auto">
               <div className="p-4 border-b">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {withMockPrefix('レプリカプレビュー')}
+                  {'レプリカプレビュー')}
                 </h3>
                 <p className="text-sm text-gray-500">
                   要素をクリックして編集を開始してください

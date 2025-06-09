@@ -45,7 +45,7 @@ export interface PaginationParams {
 /**
  * API共通レスポンス
  */
-export interface ApiResponse<T> {
+export interface ApiResponse<T = undefined> {
   success: boolean;
   data?: T;
   error?: string;
@@ -151,20 +151,20 @@ export interface ReplicaAsset {
 export interface ElementInfo {
   selector: string;
   tagName: string;
-  text: string;
-  html: string;
-  styles: ElementStyles;
+  text?: string;
+  html?: string;
+  styles?: ElementStyles;
 }
 
 /**
  * 要素スタイル
  */
 export interface ElementStyles {
-  color: string;
-  backgroundColor: string;
-  fontSize: string;
-  fontFamily: string;
-  [key: string]: string;
+  color?: string;
+  backgroundColor?: string;
+  fontSize?: string;
+  fontFamily?: string;
+  [key: string]: string | undefined;
 }
 
 /**
@@ -326,6 +326,26 @@ export interface User extends Timestamps {
 }
 
 /**
+ * 認証済みユーザー（必須プロパティのみ）
+ */
+export interface AuthenticatedUser {
+  id: string;
+  githubId: string;
+  username: string;
+}
+
+/**
+ * Express Request型拡張
+ */
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthenticatedUser;
+    }
+  }
+}
+
+/**
  * 認証状態レスポンス
  */
 export interface AuthStatusResponse {
@@ -444,6 +464,54 @@ export enum EditSessionStatus {
   CANCELLED = 'cancelled'
 }
 
+// ===== プロジェクトファイル管理 =====
+
+/**
+ * プロジェクトファイル情報
+ */
+export interface ProjectFile {
+  path: string;
+  content: string;
+  size: number;
+  mimeType: string;
+  lastModified: string;
+}
+
+/**
+ * プロジェクトファイル取得レスポンス
+ */
+export interface ProjectFileResponse {
+  file: ProjectFile;
+  exists: boolean;
+}
+
+/**
+ * プロジェクトファイル更新リクエスト
+ */
+export interface ProjectFileUpdateRequest {
+  content: string;
+  encoding?: 'utf8' | 'base64';
+}
+
+/**
+ * プロジェクトファイル更新レスポンス
+ */
+export interface ProjectFileUpdateResponse {
+  success: boolean;
+  file: ProjectFile;
+}
+
+/**
+ * プロジェクトディレクトリ構造
+ */
+export interface ProjectDirectory {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: ProjectDirectory[] | undefined;
+  size?: number | undefined;
+}
+
 // ===== APIパス定義 =====
 
 // ===== 認証設定 =====
@@ -473,6 +541,7 @@ export const API_PATHS = {
   REPLICA: {
     GET: (projectId: string) => `/api/projects/${projectId}/replica`,
     UPDATE: (projectId: string) => `/api/projects/${projectId}/replica`,
+    ASSETS: (projectId: string) => `/api/projects/${projectId}/replica/assets`,
   },
 
   // 要素編集関連
@@ -485,7 +554,7 @@ export const API_PATHS = {
   HISTORY: {
     LIST: (projectId: string) => `/api/projects/${projectId}/history`,
     DETAIL: (projectId: string, historyId: string) => `/api/projects/${projectId}/history/${historyId}`,
-    REVERT: (projectId: string, historyId: string) => `/api/projects/${projectId}/history/${historyId}/revert`,
+    RESTORE: (projectId: string, historyId: string) => `/api/projects/${projectId}/history/${historyId}/restore`,
   },
 
   // エクスポート関連
@@ -506,7 +575,9 @@ export const API_PATHS = {
 
   // GitHub関連
   GITHUB: {
+    AUTH_STATUS: '/api/github/auth/status',
     REPOS: '/api/github/repos',
+    REPOS_CREATE: '/api/github/repos/create',
     PUSH: '/api/github/push',
   },
 
@@ -520,6 +591,13 @@ export const API_PATHS = {
   // WebSocket
   WEBSOCKET: {
     TERMINAL: '/ws/terminal',
+  },
+
+  // プロジェクトファイル管理
+  PROJECT_FILES: {
+    GET: (projectId: string, filePath: string) => `/api/projects/${projectId}/files/${encodeURIComponent(filePath)}`,
+    UPDATE: (projectId: string, filePath: string) => `/api/projects/${projectId}/files/${encodeURIComponent(filePath)}`,
+    LIST: (projectId: string) => `/api/projects/${projectId}/files`,
   },
 };
 

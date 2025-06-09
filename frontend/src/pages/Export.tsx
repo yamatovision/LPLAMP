@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
-import { MockIndicator, withMockPrefix } from '@/utils/mockIndicator';
 import { Project } from '@/types';
 
 export default function Export() {
@@ -54,19 +53,16 @@ export default function Export() {
 
   if (isLoading) {
     return (
-      <MockIndicator>
         <MainLayout>
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
           </div>
         </MainLayout>
-      </MockIndicator>
     );
   }
 
   if (!project) {
     return (
-      <MockIndicator>
         <MainLayout>
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
@@ -77,7 +73,6 @@ export default function Export() {
             </div>
           </div>
         </MainLayout>
-      </MockIndicator>
     );
   }
 
@@ -87,10 +82,10 @@ export default function Export() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {withMockPrefix('エクスポート＆デプロイ')}
+              {'エクスポート＆デプロイ')}
             </h1>
             <p className="text-gray-600">
-              {withMockPrefix(project.name)} の完成物を書き出し・デプロイします
+              {project.name)} の完成物を書き出し・デプロイします
             </p>
           </div>
 

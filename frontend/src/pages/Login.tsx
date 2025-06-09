@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import AuthLayout from '@/layouts/AuthLayout';
-import { MockIndicator } from '@/utils/mockIndicator';
 
 export default function Login() {
   const { isAuthenticated, isLoading, login } = useAuth();
@@ -38,11 +37,9 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <MockIndicator>
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
         </div>
-      </MockIndicator>
     );
   }
 

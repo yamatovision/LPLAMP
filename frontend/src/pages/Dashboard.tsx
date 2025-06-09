@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
-import { MockIndicator, withMockPrefix } from '@/utils/mockIndicator';
 import { Project } from '@/types';
 
 export default function Dashboard() {
@@ -18,7 +17,9 @@ export default function Dashboard() {
     try {
       const { projectsService } = await import('@/services');
       const response = await projectsService.getProjects();
-      setProjects(response.items);
+      if (response.data) {
+        setProjects(response.data.projects);
+      }
     } catch (error) {
       console.error('プロジェクトの取得に失敗:', error);
     } finally {
@@ -55,13 +56,11 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <MockIndicator>
         <MainLayout>
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
           </div>
         </MainLayout>
-      </MockIndicator>
     );
   }
 
@@ -72,7 +71,7 @@ export default function Dashboard() {
           {/* URL入力セクション */}
           <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {withMockPrefix('新しいプロジェクトを開始')}
+              新しいプロジェクトを開始
             </h2>
             <form onSubmit={handleCreateProject} className="flex gap-4">
               <input
@@ -96,7 +95,7 @@ export default function Dashboard() {
           {/* プロジェクト一覧 */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              {withMockPrefix('あなたのプロジェクト')}
+              あなたのプロジェクト
             </h2>
             
             {projects.length === 0 ? (
@@ -128,7 +127,7 @@ export default function Dashboard() {
                     
                     <div className="p-4">
                       <h3 className="font-medium text-gray-900 mb-2 truncate">
-                        {withMockPrefix(project.name)}
+                        {project.name}
                       </h3>
                       <p className="text-sm text-gray-500 mb-2 truncate">
                         {project.url}

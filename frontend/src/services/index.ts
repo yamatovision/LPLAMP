@@ -1,55 +1,38 @@
-import { AuthStatusResponse, LoginResponse, Project, ProjectCreateResponse, ProjectStatusResponse, ApiResponse, PaginatedResponse, Replica } from '@/types';
+// API サービス
+import { authApiService } from './api/auth.service';
+import { projectsApiService } from './api/projects.service';
+import { replicaApiService } from './api/replica.service';
+import { historyApiService } from './api/history.service';
+import { elementApiService } from './api/element.service';
+import { exportApiService } from './api/export.service';
+import { fileApiService } from './api/file.service';
+import { githubApiService } from './api/github.service';
+import { deployApiService } from './api/deploy.service';
 
-import { mockAuthService } from './mock/auth.service';
-import { mockProjectsService } from './mock/projects.service';
-import { mockReplicaService } from './mock/replica.service';
+// 認証APIは実APIのみ使用（テスト通過済み）
+export const authService = authApiService;
 
-export const authService = {
-  async getAuthStatus(): Promise<AuthStatusResponse> {
-    return mockAuthService.getAuthStatus();
-  },
+// プロジェクトAPIは実APIのみ使用（テスト通過済み）
+export const projectsService = projectsApiService;
 
-  async login(): Promise<LoginResponse> {
-    return mockAuthService.login();
-  },
+// レプリカAPIは実APIのみ使用（テスト通過済み）
+export const replicaService = replicaApiService;
 
-  async logout(): Promise<void> {
-    return mockAuthService.logout();
-  },
-};
+// 履歴管理APIは実APIのみ使用（テスト通過済み）
+export const historyService = historyApiService;
 
-export const projectsService = {
-  async getProjects(): Promise<PaginatedResponse<Project>> {
-    return mockProjectsService.getProjects();
-  },
+// Element APIは実APIのみ使用（テスト通過済み）
+export const elementService = elementApiService;
 
-  async createProject(url: string): Promise<ProjectCreateResponse> {
-    return mockProjectsService.createProject(url);
-  },
+// Export APIは実APIのみ使用（テスト通過済み）
+export const exportService = exportApiService;
 
-  async getProjectStatus(projectId: string): Promise<ProjectStatusResponse> {
-    return mockProjectsService.getProjectStatus(projectId);
-  },
 
-  async getProject(projectId: string): Promise<ApiResponse<Project>> {
-    return mockProjectsService.getProject(projectId);
-  },
+// File APIは実APIのみ使用（テスト通過済み）
+export const fileService = fileApiService;
 
-  async updateProject(projectId: string, updates: Partial<Project>): Promise<ApiResponse<Project>> {
-    return mockProjectsService.updateProject(projectId, updates);
-  },
+// GitHub APIは実APIのみ使用（テスト通過済み）
+export const githubService = githubApiService;
 
-  async deleteProject(projectId: string): Promise<ApiResponse<void>> {
-    return mockProjectsService.deleteProject(projectId);
-  },
-};
-
-export const replicaService = {
-  async getReplica(projectId: string): Promise<ApiResponse<Replica>> {
-    return mockReplicaService.getReplica(projectId);
-  },
-
-  async updateReplica(projectId: string, updates: Partial<Replica>): Promise<ApiResponse<Replica>> {
-    return mockReplicaService.updateReplica(projectId, updates);
-  },
-};
+// デプロイメントAPIは実APIのみ使用（テスト通過済み）
+export const deployService = deployApiService;

@@ -3,6 +3,7 @@ import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Editor from '@/pages/Editor';
 import Export from '@/pages/Export';
+import AuthCallback from '@/pages/AuthCallback';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRouter() {
@@ -11,6 +12,9 @@ export default function AppRouter() {
       <Routes>
         {/* M-000: ログインページ */}
         <Route path="/login" element={<Login />} />
+        
+        {/* 認証コールバック */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
         
         {/* M-001: ダッシュボード（認証必須） */}
         <Route path="/" element={
