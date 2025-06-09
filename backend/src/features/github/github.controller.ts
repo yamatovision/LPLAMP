@@ -47,7 +47,7 @@ export const getAuthStatus = async (req: Request, res: Response<ApiResponse<GitH
       ip: req.ip
     });
 
-    const authStatus = GitHubService.getAuthStatus(userId);
+    const authStatus = await GitHubService.getAuthStatus(userId);
 
     const duration = Date.now() - startTime;
     logger.info('GitHub 認証状態確認完了', {
@@ -150,7 +150,7 @@ export const getRepositories = async (req: Request, res: Response<ApiResponse<{ 
       duration: `${duration}ms`
     });
 
-    const statusCode = error.message.includes('GitHub認証が必要') ? 401 : 500;
+    const statusCode = error.statusCode || (error.message.includes('GitHub認証が必要') ? 401 : 500);
     const errorCode = error.message.includes('GitHub認証が必要') ? 'GITHUB_AUTH_REQUIRED' : 'GITHUB_REPOS_FETCH_ERROR';
 
     return res.status(statusCode).json({
@@ -540,7 +540,7 @@ export const removeAuth = async (req: Request, res: Response<ApiResponse<void>>)
       ip: req.ip
     });
 
-    GitHubService.removeAuth(userId);
+    await GitHubService.removeAuth(userId);
 
     const duration = Date.now() - startTime;
     logger.info('GitHub 認証解除完了', {

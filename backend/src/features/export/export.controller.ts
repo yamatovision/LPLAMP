@@ -15,6 +15,7 @@ import {
 } from '../../types';
 import { logger } from '../../common/utils/logger';
 import * as fs from 'fs/promises';
+import { createReadStream } from 'fs';
 
 /**
  * エクスポート管理コントローラー
@@ -83,7 +84,13 @@ export class ExportController {
       // ファイルの存在確認
       try {
         await fs.access(downloadInfo.filePath);
-      } catch {
+      } catch (fileError) {
+        logger.error('エクスポートファイルアクセスエラー', {
+          error: fileError,
+          filePath: downloadInfo.filePath,
+          exportId,
+          userId
+        });
         res.status(404).json({
           success: false,
           error: 'エクスポートファイルが見つかりません'
@@ -102,13 +109,16 @@ export class ExportController {
       res.setHeader('Cache-Control', 'no-cache');
 
       // ファイルをストリーミング
-      const fileStream = require('fs').createReadStream(downloadInfo.filePath);
+      const fileStream = createReadStream(downloadInfo.filePath);
       
       fileStream.on('error', (streamError: Error) => {
         logger.error('ファイルストリーミングエラー', {
           error: streamError,
+          errorMessage: streamError.message,
+          errorStack: streamError.stack,
           exportId,
-          filePath: downloadInfo.filePath
+          filePath: downloadInfo.filePath,
+          userId
         });
         
         if (!res.headersSent) {
@@ -131,6 +141,9 @@ export class ExportController {
     } catch (error: any) {
       logger.error('エクスポートダウンロードエラー', {
         error,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorCode: error.code,
         exportId: req.params['exportId'],
         userId: req.user?.id
       });

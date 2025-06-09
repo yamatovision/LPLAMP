@@ -21,7 +21,7 @@ export default {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@octokit|universal-user-agent|before-after-hook|deprecation|node-fetch)/)'
+    'node_modules/(?!(@octokit|universal-user-agent|before-after-hook|deprecation|node-fetch|tunnel|is-plain-object)/)'
   ],
   collectCoverage: false,
   verbose: true,

@@ -77,15 +77,14 @@ export default function Export() {
   }
 
   return (
-    <MockIndicator>
       <MainLayout>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {'エクスポート＆デプロイ')}
+              エクスポート＆デプロイ
             </h1>
             <p className="text-gray-600">
-              {project.name)} の完成物を書き出し・デプロイします
+              {project.name} の完成物を書き出し・デプロイします
             </p>
           </div>
 
@@ -181,6 +180,5 @@ export default function Export() {
           </div>
         </div>
       </MainLayout>
-    </MockIndicator>
   );
 }

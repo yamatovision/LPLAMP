@@ -1,6 +1,7 @@
 /**
  * デプロイメント管理のデータモデル
  * GitHub Pages、Vercel、Netlifyなど複数のプロバイダーに対応
+ * PostgreSQL + Sequelize による永続化対応
  */
 
 import { logger } from '../../common/utils/logger';
@@ -10,6 +11,8 @@ import {
   DeployProvider, 
   DeploymentStatus 
 } from '../../types/index';
+import { DeploymentModel } from '../../models/Deployment';
+import { sequelize } from '../../config/database';
 
 /**
  * デプロイメント基本情報
@@ -67,11 +70,10 @@ export interface ProviderConfig {
 
 /**
  * デプロイメントリポジトリ層
+ * PostgreSQL + Sequelize による永続化
  * 実際のプロバイダーAPIと連携してデプロイメント操作を行う
  */
 export class DeploymentRepository {
-  private static deployments = new Map<ID, Deployment>();
-  private static deploymentCounter = 1;
 
   /**
    * プロバイダー設定の取得
@@ -119,7 +121,7 @@ export class DeploymentRepository {
   /**
    * 新しいデプロイメントを作成
    */
-  static createDeployment(request: CreateDeploymentRequest): Deployment {
+  static async createDeployment(request: CreateDeploymentRequest): Promise<Deployment> {
     const startTime = Date.now();
     
     try {
@@ -131,11 +133,7 @@ export class DeploymentRepository {
         userId: request.userId
       });
 
-      const deploymentId = `deploy-${this.deploymentCounter++}-${Date.now()}`;
-      const now = new Date().toISOString();
-      
-      const deployment: Deployment = {
-        id: deploymentId,
+      const deploymentData: any = {
         projectId: request.projectId,
         userId: request.userId,
         provider: request.provider,
@@ -144,25 +142,23 @@ export class DeploymentRepository {
         ...(request.customDomain && { customDomain: request.customDomain }),
         ...(request.environmentVariables && { environmentVariables: request.environmentVariables }),
         status: DeploymentStatus.PENDING,
-        buildLogs: [],
-        createdAt: now,
-        updatedAt: now,
-        lastCheckedAt: now
+        buildLogs: []
       };
 
-      this.deployments.set(deploymentId, deployment);
+      const deployment = await DeploymentModel.create(deploymentData);
+      const result = this.mapToDeployment(deployment);
 
       const duration = Date.now() - startTime;
       logger.info('デプロイメント作成完了', {
         component: 'DeploymentRepository',
         operation: 'createDeployment',
-        deploymentId,
+        deploymentId: result.id,
         projectId: request.projectId,
         provider: request.provider,
         duration: `${duration}ms`
       });
 
-      return deployment;
+      return result;
     } catch (error: any) {
       const duration = Date.now() - startTime;
       logger.error('デプロイメント作成エラー', {
@@ -181,7 +177,7 @@ export class DeploymentRepository {
   /**
    * デプロイメントを取得
    */
-  static getDeployment(deploymentId: ID): Deployment | null {
+  static async getDeployment(deploymentId: ID): Promise<Deployment | null> {
     const startTime = Date.now();
     
     try {
@@ -191,18 +187,19 @@ export class DeploymentRepository {
         deploymentId
       });
 
-      const deployment = this.deployments.get(deploymentId);
+      const deployment = await DeploymentModel.findByPk(deploymentId);
+      const result = deployment ? this.mapToDeployment(deployment) : null;
       
       const duration = Date.now() - startTime;
       logger.info('デプロイメント取得完了', {
         component: 'DeploymentRepository',
         operation: 'getDeployment',
         deploymentId,
-        found: !!deployment,
+        found: !!result,
         duration: `${duration}ms`
       });
 
-      return deployment || null;
+      return result;
     } catch (error: any) {
       const duration = Date.now() - startTime;
       logger.error('デプロイメント取得エラー', {
@@ -220,7 +217,7 @@ export class DeploymentRepository {
   /**
    * プロジェクトのデプロイメント一覧を取得
    */
-  static getProjectDeployments(projectId: ID, userId: ID): Deployment[] {
+  static async getProjectDeployments(projectId: ID, userId: ID): Promise<Deployment[]> {
     const startTime = Date.now();
     
     try {
@@ -231,12 +228,15 @@ export class DeploymentRepository {
         userId
       });
 
-      const deployments = Array.from(this.deployments.values())
-        .filter(deployment => 
-          deployment.projectId === projectId && 
-          deployment.userId === userId
-        )
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const deployments = await DeploymentModel.findAll({
+        where: {
+          projectId,
+          userId
+        },
+        order: [['createdAt', 'DESC']]
+      });
+
+      const results = deployments.map(deployment => this.mapToDeployment(deployment));
 
       const duration = Date.now() - startTime;
       logger.info('プロジェクトデプロイメント一覧取得完了', {
@@ -244,11 +244,11 @@ export class DeploymentRepository {
         operation: 'getProjectDeployments',
         projectId,
         userId,
-        deploymentCount: deployments.length,
+        deploymentCount: results.length,
         duration: `${duration}ms`
       });
 
-      return deployments;
+      return results;
     } catch (error: any) {
       const duration = Date.now() - startTime;
       logger.error('プロジェクトデプロイメント一覧取得エラー', {
@@ -267,7 +267,7 @@ export class DeploymentRepository {
   /**
    * デプロイメントステータスを更新
    */
-  static updateDeploymentStatus(
+  static async updateDeploymentStatus(
     deploymentId: ID, 
     status: DeploymentStatus, 
     options?: {
@@ -275,7 +275,7 @@ export class DeploymentRepository {
       errorMessage?: string;
       addLogs?: string[];
     }
-  ): Deployment | null {
+  ): Promise<Deployment | null> {
     const startTime = Date.now();
     
     try {
@@ -286,7 +286,7 @@ export class DeploymentRepository {
         newStatus: status
       });
 
-      const deployment = this.deployments.get(deploymentId);
+      const deployment = await DeploymentModel.findByPk(deploymentId);
       if (!deployment) {
         logger.warn('デプロイメント更新: 対象が見つかりません', {
           component: 'DeploymentRepository',
@@ -295,28 +295,29 @@ export class DeploymentRepository {
         return null;
       }
 
-      const now = new Date().toISOString();
-      deployment.status = status;
-      deployment.updatedAt = now;
-      deployment.lastCheckedAt = now;
+      const updateData: any = {
+        status,
+        lastCheckedAt: new Date()
+      };
 
       if (options?.deploymentUrl) {
-        deployment.deploymentUrl = options.deploymentUrl;
+        updateData.deploymentUrl = options.deploymentUrl;
       }
 
       if (options?.errorMessage) {
-        deployment.errorMessage = options.errorMessage;
+        updateData.errorMessage = options.errorMessage;
       }
 
       if (options?.addLogs && options.addLogs.length > 0) {
-        deployment.buildLogs.push(...options.addLogs);
+        updateData.buildLogs = [...deployment.buildLogs, ...options.addLogs];
       }
 
       if (status === DeploymentStatus.READY) {
-        deployment.deployedAt = now;
+        updateData.deployedAt = new Date();
       }
 
-      this.deployments.set(deploymentId, deployment);
+      await deployment.update(updateData);
+      const result = this.mapToDeployment(deployment);
 
       const duration = Date.now() - startTime;
       logger.info('デプロイメントステータス更新完了', {
@@ -324,11 +325,11 @@ export class DeploymentRepository {
         operation: 'updateDeploymentStatus',
         deploymentId,
         newStatus: status,
-        hasUrl: !!deployment.deploymentUrl,
+        hasUrl: !!result.deploymentUrl,
         duration: `${duration}ms`
       });
 
-      return deployment;
+      return result;
     } catch (error: any) {
       const duration = Date.now() - startTime;
       logger.error('デプロイメントステータス更新エラー', {
@@ -347,7 +348,7 @@ export class DeploymentRepository {
   /**
    * デプロイメントを削除
    */
-  static deleteDeployment(deploymentId: ID, userId: ID): boolean {
+  static async deleteDeployment(deploymentId: ID, userId: ID): Promise<boolean> {
     const startTime = Date.now();
     
     try {
@@ -358,7 +359,7 @@ export class DeploymentRepository {
         userId
       });
 
-      const deployment = this.deployments.get(deploymentId);
+      const deployment = await DeploymentModel.findByPk(deploymentId);
       if (!deployment || deployment.userId !== userId) {
         logger.warn('デプロイメント削除: 対象が見つからないか権限がありません', {
           component: 'DeploymentRepository',
@@ -370,7 +371,7 @@ export class DeploymentRepository {
         return false;
       }
 
-      const deleted = this.deployments.delete(deploymentId);
+      await deployment.destroy();
 
       const duration = Date.now() - startTime;
       logger.info('デプロイメント削除完了', {
@@ -378,11 +379,11 @@ export class DeploymentRepository {
         operation: 'deleteDeployment',
         deploymentId,
         userId,
-        deleted,
+        deleted: true,
         duration: `${duration}ms`
       });
 
-      return deleted;
+      return true;
     } catch (error: any) {
       const duration = Date.now() - startTime;
       logger.error('デプロイメント削除エラー', {
@@ -401,14 +402,14 @@ export class DeploymentRepository {
   /**
    * 全デプロイメント数を取得（統計用）
    */
-  static getTotalCount(): number {
-    return this.deployments.size;
+  static async getTotalCount(): Promise<number> {
+    return await DeploymentModel.count();
   }
 
   /**
    * ステータス別のデプロイメント数を取得（統計用）
    */
-  static getCountByStatus(): Record<DeploymentStatus, number> {
+  static async getCountByStatus(): Promise<Record<DeploymentStatus, number>> {
     const counts = {
       [DeploymentStatus.PENDING]: 0,
       [DeploymentStatus.BUILDING]: 0,
@@ -416,8 +417,18 @@ export class DeploymentRepository {
       [DeploymentStatus.ERROR]: 0
     };
 
-    for (const deployment of this.deployments.values()) {
-      counts[deployment.status]++;
+    const results = await DeploymentModel.findAll({
+      attributes: [
+        'status',
+        [sequelize.fn('COUNT', sequelize.col('status')), 'count']
+      ],
+      group: ['status'],
+      raw: true
+    });
+
+    for (const result of results) {
+      const status = (result as any).status as DeploymentStatus;
+      counts[status] = parseInt((result as any).count) || 0;
     }
 
     return counts;
@@ -426,31 +437,66 @@ export class DeploymentRepository {
   /**
    * プロバイダー別のデプロイメント数を取得（統計用）
    */
-  static getCountByProvider(): Record<DeployProvider, number> {
+  static async getCountByProvider(): Promise<Record<DeployProvider, number>> {
     const counts = {
       [DeployProvider.GITHUB_PAGES]: 0,
       [DeployProvider.VERCEL]: 0,
       [DeployProvider.NETLIFY]: 0
     };
 
-    for (const deployment of this.deployments.values()) {
-      counts[deployment.provider]++;
+    const results = await DeploymentModel.findAll({
+      attributes: [
+        'provider',
+        [sequelize.fn('COUNT', sequelize.col('provider')), 'count']
+      ],
+      group: ['provider'],
+      raw: true
+    });
+
+    for (const result of results) {
+      const provider = (result as any).provider as DeployProvider;
+      counts[provider] = parseInt((result as any).count) || 0;
     }
 
     return counts;
   }
 
   /**
+   * Sequelizeモデルからアプリケーション形式への変換
+   */
+  private static mapToDeployment(model: any): Deployment {
+    return {
+      id: model.id,
+      projectId: model.projectId,
+      userId: model.userId,
+      provider: model.provider,
+      repositoryUrl: model.repositoryUrl,
+      branch: model.branch,
+      customDomain: model.customDomain,
+      environmentVariables: model.environmentVariables,
+      status: model.status,
+      deploymentUrl: model.deploymentUrl,
+      buildLogs: model.buildLogs || [],
+      errorMessage: model.errorMessage,
+      deployedAt: model.deployedAt?.toISOString(),
+      lastCheckedAt: model.lastCheckedAt?.toISOString() || new Date().toISOString(),
+      createdAt: model.createdAt?.toISOString() || new Date().toISOString(),
+      updatedAt: model.updatedAt?.toISOString() || new Date().toISOString()
+    };
+  }
+
+  /**
    * テスト用: 全データクリア
    */
-  static clearAll(): void {
+  static async clearAll(): Promise<void> {
+    const previousCount = await DeploymentModel.count();
+    
     logger.info('全デプロイメントデータをクリア', {
       component: 'DeploymentRepository',
       operation: 'clearAll',
-      previousCount: this.deployments.size
+      previousCount
     });
     
-    this.deployments.clear();
-    this.deploymentCounter = 1;
+    await DeploymentModel.destroy({ where: {} });
   }
 }

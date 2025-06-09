@@ -65,7 +65,6 @@ export default function Dashboard() {
   }
 
   return (
-    <MockIndicator>
       <MainLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* URL入力セクション */}
@@ -144,6 +143,5 @@ export default function Dashboard() {
           </div>
         </div>
       </MainLayout>
-    </MockIndicator>
   );
 }

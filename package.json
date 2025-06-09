@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "ts:check": "node scripts/ts-error/analyzer.js"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
+  }
+}

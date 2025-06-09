@@ -89,6 +89,7 @@ export class ExportService {
 
   constructor() {
     this.tempDir = process.env['TEMP_DIR'] || '/tmp/lplamp';
+    logger.info('エクスポートサービス初期化', { tempDir: this.tempDir });
   }
 
   /**
@@ -117,20 +118,24 @@ export class ExportService {
         throw new ReplicaNotFoundError();
       }
 
-      // ファイルを準備
+      // エクスポートレコードを先に作成
+      const exportRecord = await exportModel.create(
+        request.projectId,
+        request.format,
+        [] // 一時的に空配列
+      );
+
+      // エクスポートレコードを使ってファイルを準備
       const files = await this.prepareFiles(
         request.projectId,
         replica,
         request.format,
-        request.optimize
+        request.optimize,
+        exportRecord
       );
 
-      // エクスポートレコードを作成
-      const exportRecord = await exportModel.create(
-        request.projectId,
-        request.format,
-        files
-      );
+      // ファイル情報を更新
+      await exportModel.updateFiles(exportRecord.id, files);
 
       const duration = Date.now() - start;
       logger.info('エクスポート準備が完了しました', {
@@ -273,7 +278,8 @@ export class ExportService {
     projectId: ID,
     replica: any,
     format: ExportFormat,
-    optimize: boolean
+    optimize: boolean,
+    exportRecord: Export
   ): Promise<FileInfo[]> {
     const files: FileInfo[] = [];
 
@@ -281,6 +287,8 @@ export class ExportService {
       // 一時ディレクトリを作成
       const exportDir = path.join(this.tempDir, 'exports');
       await fs.mkdir(exportDir, { recursive: true });
+      
+      logger.info('エクスポートディレクトリを確認/作成しました', { exportDir });
 
       if (format === ExportFormat.HTML) {
         // HTML形式の場合
@@ -288,7 +296,9 @@ export class ExportService {
           await this.optimizeHtml(replica.html) : 
           replica.html;
 
-        const htmlFile = path.join(exportDir, `${projectId}.html`);
+        // エクスポートファイル名を生成
+        const fileName = this.getExportFileName(exportRecord);
+        const htmlFile = path.join(exportDir, fileName);
         await fs.writeFile(htmlFile, htmlContent, 'utf8');
 
         files.push({
@@ -303,7 +313,8 @@ export class ExportService {
             await this.optimizeCss(replica.css) : 
             replica.css;
 
-          const cssFile = path.join(exportDir, `${projectId}.css`);
+          const cssFileName = `${exportRecord.projectId}_${exportRecord.id}_style.css`;
+          const cssFile = path.join(exportDir, cssFileName);
           await fs.writeFile(cssFile, cssContent, 'utf8');
 
           files.push({
@@ -314,7 +325,9 @@ export class ExportService {
         }
       } else if (format === ExportFormat.ZIP) {
         // ZIP形式の場合
-        const zipFile = path.join(exportDir, `${projectId}.zip`);
+        // エクスポートファイル名を生成
+        const fileName = this.getExportFileName(exportRecord);
+        const zipFile = path.join(exportDir, fileName);
         await this.createZipFile(projectId, replica, zipFile, optimize);
 
         const stats = await fs.stat(zipFile);
@@ -374,50 +387,55 @@ export class ExportService {
     zipPath: string,
     optimize: boolean
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const output = createWriteStream(zipPath);
-      const archive = archiver('zip', {
-        zlib: { level: 9 } // 最高圧縮レベル
-      });
-
-      output.on('close', () => {
-        logger.info('ZIPファイル作成完了', {
-          projectId,
-          size: archive.pointer()
+    return new Promise(async (resolve, reject) => {
+      try {
+        const output = createWriteStream(zipPath);
+        const archive = archiver('zip', {
+          zlib: { level: 9 } // 最高圧縮レベル
         });
-        resolve();
-      });
 
-      archive.on('error', (err: Error) => {
-        logger.error('ZIPファイル作成エラー', { error: err, projectId });
-        reject(err);
-      });
+        output.on('close', () => {
+          logger.info('ZIPファイル作成完了', {
+            projectId,
+            size: archive.pointer()
+          });
+          resolve();
+        });
 
-      archive.pipe(output);
+        archive.on('error', (err: Error) => {
+          logger.error('ZIPファイル作成エラー', { error: err, projectId });
+          reject(err);
+        });
 
-      // HTMLファイルを追加
-      const htmlContent = optimize ? 
-        this.optimizeHtml(replica.html) : 
-        replica.html;
-      archive.append(htmlContent, { name: 'index.html' });
+        archive.pipe(output);
 
-      // CSSファイルを追加
-      if (replica.css) {
-        const cssContent = optimize ? 
-          this.optimizeCss(replica.css) : 
-          replica.css;
-        archive.append(cssContent, { name: 'style.css' });
-      }
+        // HTMLファイルを追加
+        const htmlContent = optimize ? 
+          await this.optimizeHtml(replica.html) : 
+          replica.html;
+        archive.append(htmlContent, { name: 'index.html' });
 
-      // アセットファイルを追加（必要に応じて）
-      if (replica.assets && Array.isArray(replica.assets)) {
-        for (const asset of replica.assets) {
-          // アセットファイルの処理（実装簡略化）
-          logger.info('アセット追加', { asset: asset.localPath });
+        // CSSファイルを追加
+        if (replica.css) {
+          const cssContent = optimize ? 
+            await this.optimizeCss(replica.css) : 
+            replica.css;
+          archive.append(cssContent, { name: 'style.css' });
         }
-      }
 
-      archive.finalize();
+        // アセットファイルを追加（必要に応じて）
+        if (replica.assets && Array.isArray(replica.assets)) {
+          for (const asset of replica.assets) {
+            // アセットファイルの処理（実装簡略化）
+            logger.info('アセット追加', { asset: asset.localPath });
+          }
+        }
+
+        archive.finalize();
+      } catch (error) {
+        logger.error('ZIPファイル作成エラー', { error, projectId });
+        reject(error);
+      }
     });
   }
 

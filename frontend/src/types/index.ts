@@ -386,6 +386,7 @@ export enum DeployProvider {
  * デプロイリクエスト
  */
 export interface DeployRequest {
+  projectId: ID;
   repo: string;
   provider: DeployProvider;
   customDomain?: string;

@@ -24,7 +24,7 @@ export class GitHubService {
   /**
    * 認証状態の確認
    */
-  static getAuthStatus(userId: string): GitHubAuthStatus {
+  static async getAuthStatus(userId: string): Promise<GitHubAuthStatus> {
     const startTime = Date.now();
     
     try {
@@ -34,7 +34,7 @@ export class GitHubService {
         userId
       });
 
-      const authStatus = GitHubAuthRepository.getAuthStatus(userId);
+      const authStatus = await GitHubAuthRepository.getAuthStatus(userId);
       
       const duration = Date.now() - startTime;
       logger.info('GitHub 認証状態確認完了', {
@@ -84,7 +84,7 @@ export class GitHubService {
       const userInfo = await githubRepo.getAuthenticatedUser();
 
       // 認証情報を保存
-      GitHubAuthRepository.setAuthInfo(userId, {
+      await GitHubAuthRepository.setAuthInfo(userId, {
         accessToken,
         username: userInfo.username,
         userId
@@ -129,7 +129,7 @@ export class GitHubService {
   /**
    * 認証解除
    */
-  static removeAuth(userId: string): void {
+  static async removeAuth(userId: string): Promise<void> {
     const startTime = Date.now();
     
     try {
@@ -139,7 +139,7 @@ export class GitHubService {
         userId
       });
 
-      GitHubAuthRepository.removeAuthInfo(userId);
+      await GitHubAuthRepository.removeAuthInfo(userId);
 
       const duration = Date.now() - startTime;
       logger.info('GitHub 認証解除完了', {
@@ -175,9 +175,12 @@ export class GitHubService {
         userId
       });
 
-      const authInfo = GitHubAuthRepository.getAuthInfo(userId);
+      const authInfo = await GitHubAuthRepository.getAuthInfo(userId);
       if (!authInfo) {
-        throw new Error('GitHub認証が必要です');
+        // 認証が必要というエラーは401エラーとして扱われるべき
+        const error = new Error('GitHub認証が必要です');
+        (error as any).statusCode = 401;
+        throw error;
       }
 
       const githubRepo = new GitHubRepository(authInfo.accessToken);
@@ -231,9 +234,12 @@ export class GitHubService {
         isPrivate
       });
 
-      const authInfo = GitHubAuthRepository.getAuthInfo(userId);
+      const authInfo = await GitHubAuthRepository.getAuthInfo(userId);
       if (!authInfo) {
-        throw new Error('GitHub認証が必要です');
+        // 認証が必要というエラーは401エラーとして扱われるべき
+        const error = new Error('GitHub認証が必要です');
+        (error as any).statusCode = 401;
+        throw error;
       }
 
       const githubRepo = new GitHubRepository(authInfo.accessToken);
@@ -287,9 +293,12 @@ export class GitHubService {
         branch: pushRequest.branch
       });
 
-      const authInfo = GitHubAuthRepository.getAuthInfo(userId);
+      const authInfo = await GitHubAuthRepository.getAuthInfo(userId);
       if (!authInfo) {
-        throw new Error('GitHub認証が必要です');
+        // 認証が必要というエラーは401エラーとして扱われるべき
+        const error = new Error('GitHub認証が必要です');
+        (error as any).statusCode = 401;
+        throw error;
       }
 
       // エクスポートファイルの存在確認
@@ -446,9 +455,12 @@ export class GitHubService {
         userId
       });
 
-      const authInfo = GitHubAuthRepository.getAuthInfo(userId);
+      const authInfo = await GitHubAuthRepository.getAuthInfo(userId);
       if (!authInfo) {
-        throw new Error('GitHub認証が必要です');
+        // 認証が必要というエラーは401エラーとして扱われるべき
+        const error = new Error('GitHub認証が必要です');
+        (error as any).statusCode = 401;
+        throw error;
       }
 
       const githubRepo = new GitHubRepository(authInfo.accessToken);

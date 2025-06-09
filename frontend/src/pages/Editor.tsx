@@ -66,9 +66,8 @@ export default function Editor() {
   }
 
   return (
-    <MockIndicator>
       <EditorLayout 
-        projectName={project.name)} 
+        projectName={project.name} 
         saveStatus={saveStatus}
       >
         <div className="flex-1 bg-gray-100">
@@ -77,7 +76,7 @@ export default function Editor() {
             <div className="bg-white rounded-lg shadow-sm h-full overflow-auto">
               <div className="p-4 border-b">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {'レプリカプレビュー')}
+                  レプリカプレビュー
                 </h3>
                 <p className="text-sm text-gray-500">
                   要素をクリックして編集を開始してください
@@ -109,6 +108,5 @@ export default function Editor() {
           </div>
         </div>
       </EditorLayout>
-    </MockIndicator>
   );
 }

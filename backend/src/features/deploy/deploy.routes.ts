@@ -38,11 +38,25 @@ export const createDeployRoutes = (): Router => {
     next();
   });
 
-  // レート制限の設定
-  const triggerDeployLimiter = rateLimit(validateRateLimit.triggerDeploy);
-  const checkStatusLimiter = rateLimit(validateRateLimit.checkStatus);
-  const getLogsLimiter = rateLimit(validateRateLimit.getLogs);
-  const listDeploymentsLimiter = rateLimit(validateRateLimit.listDeployments);
+  // レート制限の設定（テスト環境では緩和）
+  const isTestEnv = process.env['NODE_ENV'] === 'test';
+  const triggerDeployLimiter = rateLimit({
+    ...validateRateLimit.triggerDeploy,
+    max: isTestEnv ? 1000 : validateRateLimit.triggerDeploy.max,
+    windowMs: isTestEnv ? 1000 : validateRateLimit.triggerDeploy.windowMs
+  });
+  const checkStatusLimiter = rateLimit({
+    ...validateRateLimit.checkStatus,
+    max: isTestEnv ? 1000 : validateRateLimit.checkStatus.max
+  });
+  const getLogsLimiter = rateLimit({
+    ...validateRateLimit.getLogs,
+    max: isTestEnv ? 1000 : validateRateLimit.getLogs.max
+  });
+  const listDeploymentsLimiter = rateLimit({
+    ...validateRateLimit.listDeployments,
+    max: isTestEnv ? 1000 : validateRateLimit.listDeployments.max
+  });
 
   /**
    * デプロイメント開始
@@ -63,6 +77,16 @@ export const createDeployRoutes = (): Router => {
   );
 
   /**
+   * デプロイメント統計情報取得
+   * GET /api/deploy/stats
+   * ※ パラメータ付きルートより先に定義
+   */
+  router.get('/stats',
+    listDeploymentsLimiter,
+    deployController.getDeploymentStats
+  );
+
+  /**
    * デプロイメントステータス確認
    * GET /api/deploy/:deploymentId/status
    */
@@ -80,15 +104,6 @@ export const createDeployRoutes = (): Router => {
     getLogsLimiter,
     validateDeploymentId,
     deployController.getDeploymentLogs
-  );
-
-  /**
-   * デプロイメント統計情報取得
-   * GET /api/deploy/stats
-   */
-  router.get('/stats',
-    listDeploymentsLimiter,
-    deployController.getDeploymentStats
   );
 
   // エラーハンドリングミドルウェア

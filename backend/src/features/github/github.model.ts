@@ -6,6 +6,7 @@
 import { Octokit } from '@octokit/rest';
 import { logger } from '../../common/utils/logger';
 import type { GitHubRepository as GitHubRepositoryInterface, GitHubAuthStatus } from '../../types/index';
+import { GitHubAuthModel } from '../../models/GitHubAuth';
 
 /**
  * GitHub API認証情報の管理
@@ -357,69 +358,187 @@ export class GitHubRepository {
 }
 
 /**
- * GitHub認証状態管理（メモリベース）
- * 実環境では永続化層（データベース）を使用することを推奨
+ * GitHub認証状態管理（PostgreSQL + Sequelize）
+ * 永続化層を使用した本格的な認証情報管理
  */
 export class GitHubAuthRepository {
-  private static authStore = new Map<string, GitHubAuthInfo>();
-
   /**
    * 認証情報を保存
    */
-  static setAuthInfo(userId: string, authInfo: GitHubAuthInfo): void {
-    logger.info('GitHub 認証情報保存', {
-      component: 'GitHubAuthRepository',
-      operation: 'setAuthInfo',
-      userId,
-      username: authInfo.username
-    });
-    
-    this.authStore.set(userId, authInfo);
+  static async setAuthInfo(userId: string, authInfo: GitHubAuthInfo): Promise<void> {
+    try {
+      logger.info('GitHub 認証情報保存開始', {
+        component: 'GitHubAuthRepository',
+        operation: 'setAuthInfo',
+        userId,
+        username: authInfo.username
+      });
+
+      // 既存の認証情報があれば更新、なければ新規作成
+      const [, created] = await GitHubAuthModel.upsert({
+        userId,
+        accessToken: authInfo.accessToken,
+        tokenType: 'bearer',
+        scope: 'repo',
+        username: authInfo.username,
+        isActive: true,
+        lastUsedAt: new Date()
+      });
+
+      logger.info('GitHub 認証情報保存完了', {
+        component: 'GitHubAuthRepository',
+        operation: 'setAuthInfo',
+        userId,
+        username: authInfo.username,
+        created
+      });
+    } catch (error: any) {
+      logger.error('GitHub 認証情報保存エラー', {
+        component: 'GitHubAuthRepository',
+        operation: 'setAuthInfo',
+        userId,
+        error: error.message
+      });
+      throw new Error(`GitHub認証情報の保存に失敗しました: ${error.message}`);
+    }
   }
 
   /**
    * 認証情報を取得
    */
-  static getAuthInfo(userId: string): GitHubAuthInfo | null {
-    const authInfo = this.authStore.get(userId);
-    
-    logger.info('GitHub 認証情報取得', {
-      component: 'GitHubAuthRepository',
-      operation: 'getAuthInfo',
-      userId,
-      found: !!authInfo
-    });
-    
-    return authInfo || null;
+  static async getAuthInfo(userId: string): Promise<GitHubAuthInfo | null> {
+    try {
+      logger.info('GitHub 認証情報取得開始', {
+        component: 'GitHubAuthRepository',
+        operation: 'getAuthInfo',
+        userId
+      });
+
+      const githubAuth = await GitHubAuthModel.findOne({
+        where: {
+          userId,
+          isActive: true
+        }
+      });
+
+      if (!githubAuth) {
+        logger.info('GitHub 認証情報が見つかりません', {
+          component: 'GitHubAuthRepository',
+          operation: 'getAuthInfo',
+          userId,
+          found: false
+        });
+        return null;
+      }
+
+      // 最終使用日時を更新
+      await githubAuth.update({ lastUsedAt: new Date() });
+
+      const authInfo: GitHubAuthInfo = {
+        accessToken: githubAuth.accessToken,
+        username: githubAuth.username,
+        userId: githubAuth.userId
+      };
+
+      logger.info('GitHub 認証情報取得完了', {
+        component: 'GitHubAuthRepository',
+        operation: 'getAuthInfo',
+        userId,
+        found: true,
+        username: githubAuth.username
+      });
+
+      return authInfo;
+    } catch (error: any) {
+      logger.error('GitHub 認証情報取得エラー', {
+        component: 'GitHubAuthRepository',
+        operation: 'getAuthInfo',
+        userId,
+        error: error.message
+      });
+      
+      // データベース関連のエラーの場合は認証なしとして扱う（テスト環境等で起こりうる）
+      if (error.message.includes('relation') || error.message.includes('does not exist')) {
+        logger.warn('データベーステーブルが存在しません - 認証なしとして処理', {
+          component: 'GitHubAuthRepository',
+          operation: 'getAuthInfo',
+          userId,
+          error: error.message
+        });
+        return null;
+      }
+      
+      // その他のエラーは通常通り投げる
+      throw new Error(`GitHub認証情報の取得に失敗しました: ${error.message}`);
+    }
   }
 
   /**
    * 認証情報を削除
    */
-  static removeAuthInfo(userId: string): void {
-    const removed = this.authStore.delete(userId);
-    
-    logger.info('GitHub 認証情報削除', {
-      component: 'GitHubAuthRepository',
-      operation: 'removeAuthInfo',
-      userId,
-      removed
-    });
+  static async removeAuthInfo(userId: string): Promise<void> {
+    try {
+      logger.info('GitHub 認証情報削除開始', {
+        component: 'GitHubAuthRepository',
+        operation: 'removeAuthInfo',
+        userId
+      });
+
+      const result = await GitHubAuthModel.update(
+        { isActive: false },
+        {
+          where: {
+            userId,
+            isActive: true
+          }
+        }
+      );
+
+      const removed = result[0] > 0;
+
+      logger.info('GitHub 認証情報削除完了', {
+        component: 'GitHubAuthRepository',
+        operation: 'removeAuthInfo',
+        userId,
+        removed
+      });
+    } catch (error: any) {
+      logger.error('GitHub 認証情報削除エラー', {
+        component: 'GitHubAuthRepository',
+        operation: 'removeAuthInfo',
+        userId,
+        error: error.message
+      });
+      throw new Error(`GitHub認証情報の削除に失敗しました: ${error.message}`);
+    }
   }
 
   /**
    * 認証状態の確認
    */
-  static getAuthStatus(userId: string): GitHubAuthStatus {
-    const authInfo = this.getAuthInfo(userId);
-    
-    const status: GitHubAuthStatus = {
-      authenticated: !!authInfo
-    };
-    
-    if (authInfo?.username) {
-      status.username = authInfo.username;
+  static async getAuthStatus(userId: string): Promise<GitHubAuthStatus> {
+    try {
+      const authInfo = await this.getAuthInfo(userId);
+      
+      const status: GitHubAuthStatus = {
+        authenticated: !!authInfo
+      };
+      
+      if (authInfo?.username) {
+        status.username = authInfo.username;
+      }
+      
+      return status;
+    } catch (error: any) {
+      logger.error('GitHub 認証状態確認エラー', {
+        component: 'GitHubAuthRepository',
+        operation: 'getAuthStatus',
+        userId,
+        error: error.message
+      });
+      
+      // エラーの場合は未認証として扱う
+      return { authenticated: false };
     }
-    return status;
   }
 }

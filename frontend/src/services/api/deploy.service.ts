@@ -26,11 +26,12 @@ export const deployApiService = {
         deployData
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<DeployResponse>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'デプロイメントの開始に失敗しました');
+      throw new Error(apiResponse?.error || 'デプロイメントの開始に失敗しました');
     } catch (error: any) {
       console.error('デプロイメント開始エラー:', error);
       
@@ -59,11 +60,12 @@ export const deployApiService = {
         API_PATHS.DEPLOY.STATUS(deploymentId)
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<DeploymentDetail>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'デプロイメントステータスの取得に失敗しました');
+      throw new Error(apiResponse?.error || 'デプロイメントステータスの取得に失敗しました');
     } catch (error: any) {
       console.error('デプロイメントステータス確認エラー:', error);
       
@@ -88,11 +90,12 @@ export const deployApiService = {
         `${API_PATHS.DEPLOY.STATUS(deploymentId)}/logs`
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data.logs;
+      const apiResponse = response.data as unknown as ApiResponse<{ logs: string[] }>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data.logs;
       }
       
-      throw new Error(response.data.error || 'デプロイメントログの取得に失敗しました');
+      throw new Error(apiResponse?.error || 'デプロイメントログの取得に失敗しました');
     } catch (error: any) {
       console.error('デプロイメントログ取得エラー:', error);
       
@@ -126,11 +129,12 @@ export const deployApiService = {
         { params }
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<PaginatedResponse<DeploymentDetail>>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'デプロイメント一覧の取得に失敗しました');
+      throw new Error(apiResponse?.error || 'デプロイメント一覧の取得に失敗しました');
     } catch (error: any) {
       console.error('デプロイメント一覧取得エラー:', error);
       
@@ -155,11 +159,12 @@ export const deployApiService = {
         API_PATHS.DEPLOY.STATUS(deploymentId)
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data.cancelled;
+      const apiResponse = response.data as unknown as ApiResponse<{ cancelled: boolean }>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data.cancelled;
       }
       
-      throw new Error(response.data.error || 'デプロイメントのキャンセルに失敗しました');
+      throw new Error(apiResponse?.error || 'デプロイメントのキャンセルに失敗しました');
     } catch (error: any) {
       console.error('デプロイメントキャンセルエラー:', error);
       

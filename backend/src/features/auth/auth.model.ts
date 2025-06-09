@@ -194,7 +194,14 @@ export class InMemoryUserRepository implements UserRepository {
    * 簡易ID生成（本番では UUID ライブラリを使用）
    */
   private generateId(): string {
-    return `user_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    // UUID v4 形式に近い文字列を生成
+    const part1 = Math.random().toString(16).substring(2, 10);
+    const part2 = Math.random().toString(16).substring(2, 6);
+    const part3 = Math.random().toString(16).substring(2, 6);
+    const part4 = Math.random().toString(16).substring(2, 6);
+    const part5 = Math.random().toString(16).substring(2, 14);
+    
+    return `${part1}-${part2}-${part3}-${part4}-${part5}`;
   }
 
   /**

@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "dev": "tsx src/server.ts",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
-    "test:integration": "NODE_OPTIONS='--experimental-vm-modules' jest --testMatch='**/tests/integration/**/*.test.ts'",
+    "test:integration": "NODE_OPTIONS='--experimental-vm-modules' jest --testMatch='**/tests/integration/**/*.test.ts' --runInBand --verbose",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "ts:check": "node ../scripts/ts-error/analyzer.js"
@@ -41,7 +41,8 @@
     "pg": "^8.16.0",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.9",
@@ -52,6 +53,7 @@
     "@types/morgan": "^1.9.4",
     "@types/node": "^20.5.0",
     "@types/supertest": "^2.0.12",
+    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^6.2.1",
     "@typescript-eslint/parser": "^6.2.1",
     "dotenv": "^16.5.0",

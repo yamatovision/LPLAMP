@@ -48,7 +48,6 @@ export default function Login() {
   }
 
   return (
-    <MockIndicator>
       <AuthLayout>
         <div className="text-center">
           {showRedirectMessage ? (
@@ -83,6 +82,5 @@ export default function Login() {
           )}
         </div>
       </AuthLayout>
-    </MockIndicator>
   );
 }

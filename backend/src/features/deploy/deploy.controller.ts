@@ -218,7 +218,7 @@ export const getDeploymentStatus = async (req: Request, res: Response<ApiRespons
       ip: req.ip
     });
 
-    const deploymentDetail = DeploymentService.getDeploymentStatus(deploymentId, userId);
+    const deploymentDetail = await DeploymentService.getDeploymentStatus(deploymentId, userId);
 
     if (!deploymentDetail) {
       logger.warn('デプロイメントが見つかりません', {
@@ -349,7 +349,7 @@ export const getDeploymentLogs = async (req: Request, res: Response<ApiResponse<
       ip: req.ip
     });
 
-    const logs = DeploymentService.getDeploymentLogs(deploymentId, userId);
+    const logs = await DeploymentService.getDeploymentLogs(deploymentId, userId);
 
     const duration = Date.now() - startTime;
     logger.info('デプロイメントログ取得完了', {
@@ -481,7 +481,7 @@ export const getProjectDeployments = async (req: Request, res: Response<ApiRespo
       ip: req.ip
     });
 
-    const result = DeploymentService.getProjectDeployments(projectId, userId, page, limit);
+    const result = await DeploymentService.getProjectDeployments(projectId, userId, page, limit);
 
     const duration = Date.now() - startTime;
     logger.info('プロジェクトデプロイメント一覧取得完了', {
@@ -564,7 +564,7 @@ export const getDeploymentStats = async (req: Request, res: Response<ApiResponse
       ip: req.ip
     });
 
-    const stats = DeploymentService.getDeploymentStats();
+    const stats = await DeploymentService.getDeploymentStats();
 
     const duration = Date.now() - startTime;
     logger.info('デプロイメント統計取得完了', {

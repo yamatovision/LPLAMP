@@ -71,13 +71,13 @@ export class DeploymentService {
         createRequest.customDomain = deployRequest.customDomain;
       }
 
-      const deployment = DeploymentRepository.createDeployment(createRequest);
+      const deployment = await DeploymentRepository.createDeployment(createRequest);
 
       // デプロイメント記録は即座に完了、実際の処理は別途開始
       // この設計により、リポジトリには即座にデプロイメントが記録される
       
       // 初期ログを即座に追加
-      DeploymentRepository.updateDeploymentStatus(
+      await DeploymentRepository.updateDeploymentStatus(
         deployment.id,
         DeploymentStatus.PENDING,
         {
@@ -141,7 +141,7 @@ export class DeploymentService {
   /**
    * デプロイメントステータスを取得
    */
-  static getDeploymentStatus(deploymentId: ID, userId: ID): DeploymentDetail | null {
+  static async getDeploymentStatus(deploymentId: ID, userId: ID): Promise<DeploymentDetail | null> {
     const startTime = Date.now();
     
     try {
@@ -152,7 +152,7 @@ export class DeploymentService {
         userId
       });
 
-      const deployment = DeploymentRepository.getDeployment(deploymentId);
+      const deployment = await DeploymentRepository.getDeployment(deploymentId);
       
       if (!deployment) {
         logger.warn('デプロイメントが見つかりません', {
@@ -224,12 +224,12 @@ export class DeploymentService {
   /**
    * プロジェクトのデプロイメント一覧を取得
    */
-  static getProjectDeployments(
+  static async getProjectDeployments(
     projectId: ID, 
     userId: ID,
     page: number = 1,
     limit: number = 10
-  ): { deployments: DeploymentDetail[]; total: number; hasMore: boolean } {
+  ): Promise<{ deployments: DeploymentDetail[]; total: number; hasMore: boolean }> {
     const startTime = Date.now();
     
     try {
@@ -242,7 +242,7 @@ export class DeploymentService {
         limit
       });
 
-      const allDeployments = DeploymentRepository.getProjectDeployments(projectId, userId);
+      const allDeployments = await DeploymentRepository.getProjectDeployments(projectId, userId);
       
       // ページネーション処理
       const startIndex = (page - 1) * limit;
@@ -297,7 +297,7 @@ export class DeploymentService {
   /**
    * デプロイメントのログを取得
    */
-  static getDeploymentLogs(deploymentId: ID, userId: ID): string[] {
+  static async getDeploymentLogs(deploymentId: ID, userId: ID): Promise<string[]> {
     const startTime = Date.now();
     
     try {
@@ -308,7 +308,7 @@ export class DeploymentService {
         userId
       });
 
-      const deployment = DeploymentRepository.getDeployment(deploymentId);
+      const deployment = await DeploymentRepository.getDeployment(deploymentId);
       
       if (!deployment || deployment.userId !== userId) {
         logger.warn('デプロイメントログアクセス権限エラー', {
@@ -393,7 +393,7 @@ export class DeploymentService {
       });
 
       // デプロイメントが存在するかチェック（削除済みの場合は処理を停止）
-      const existingDeployment = DeploymentRepository.getDeployment(deploymentId);
+      const existingDeployment = await DeploymentRepository.getDeployment(deploymentId);
       if (!existingDeployment) {
         logger.info('デプロイメント処理中止 - デプロイメントが見つかりません', {
           component: 'DeploymentService',
@@ -404,7 +404,7 @@ export class DeploymentService {
       }
 
       // ビルド開始状態に更新
-      const updated = DeploymentRepository.updateDeploymentStatus(
+      const updated = await DeploymentRepository.updateDeploymentStatus(
         deploymentId, 
         DeploymentStatus.BUILDING,
         {
@@ -458,7 +458,7 @@ export class DeploymentService {
     await new Promise(resolve => setTimeout(resolve, processingTime));
 
     // 処理完了後、デプロイメントがまだ存在するかチェック
-    const stillExists = DeploymentRepository.getDeployment(deploymentId);
+    const stillExists = await DeploymentRepository.getDeployment(deploymentId);
     if (!stillExists) {
       logger.info('デプロイメント処理中止 - 処理完了時にデプロイメントが見つかりません', {
         component: 'DeploymentService',
@@ -480,8 +480,8 @@ export class DeploymentService {
       const deploymentUrl = this.generateDeploymentUrl(deployRequest.provider, deployRequest.repo, deployRequest.customDomain);
       
       // 最終更新前にも存在確認
-      if (DeploymentRepository.getDeployment(deploymentId)) {
-        DeploymentRepository.updateDeploymentStatus(
+      if (await DeploymentRepository.getDeployment(deploymentId)) {
+        await DeploymentRepository.updateDeploymentStatus(
           deploymentId, 
           DeploymentStatus.READY,
           {
@@ -495,8 +495,8 @@ export class DeploymentService {
       const errorMessage = 'ビルドエラーが発生しました';
       
       // 最終更新前にも存在確認
-      if (DeploymentRepository.getDeployment(deploymentId)) {
-        DeploymentRepository.updateDeploymentStatus(
+      if (await DeploymentRepository.getDeployment(deploymentId)) {
+        await DeploymentRepository.updateDeploymentStatus(
           deploymentId, 
           DeploymentStatus.ERROR,
           {
@@ -562,16 +562,16 @@ export class DeploymentService {
   /**
    * 統計情報を取得
    */
-  static getDeploymentStats(): {
+  static async getDeploymentStats(): Promise<{
     total: number;
     byStatus: Record<DeploymentStatus, number>;
     byProvider: Record<DeployProvider, number>;
-  } {
-    const statusCounts = DeploymentRepository.getCountByStatus();
-    const providerCounts = DeploymentRepository.getCountByProvider();
+  }> {
+    const statusCounts = await DeploymentRepository.getCountByStatus();
+    const providerCounts = await DeploymentRepository.getCountByProvider();
 
     return {
-      total: DeploymentRepository.getTotalCount(),
+      total: await DeploymentRepository.getTotalCount(),
       byStatus: statusCounts,
       byProvider: providerCounts
     };

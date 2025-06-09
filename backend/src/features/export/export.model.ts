@@ -82,6 +82,23 @@ class ExportModel {
   }
 
   /**
+   * エクスポートのファイル情報を更新
+   */
+  async updateFiles(exportId: ID, files: FileInfo[]): Promise<void> {
+    if (!this.store[exportId]) {
+      throw new Error('エクスポートが見つかりません');
+    }
+
+    this.filesStore[exportId] = files;
+    this.store[exportId].updatedAt = new Date().toISOString();
+
+    logger.info('エクスポートファイル情報を更新しました', {
+      exportId,
+      filesCount: files.length
+    });
+  }
+
+  /**
    * プロジェクトのエクスポート履歴を取得
    */
   async findByProjectId(projectId: ID): Promise<Export[]> {

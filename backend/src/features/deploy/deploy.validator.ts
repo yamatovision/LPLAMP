@@ -10,6 +10,12 @@ import { DeployProvider } from '../../types/index';
  * デプロイ開始時のバリデーション
  */
 export const validateTriggerDeploy = [
+  body('projectId')
+    .notEmpty()
+    .withMessage('プロジェクトIDが必要です')
+    .isString()
+    .withMessage('プロジェクトIDは文字列である必要があります'),
+    
   body('repo')
     .isString()
     .withMessage('リポジトリ名は文字列である必要があります')
@@ -119,7 +125,7 @@ export const validateDeploymentId = [
   param('deploymentId')
     .isString()
     .withMessage('デプロイメントIDは文字列である必要があります')
-    .matches(/^deploy-\d+-\d+$/)
+    .isUUID()
     .withMessage('無効なデプロイメントID形式です')
 ];
 

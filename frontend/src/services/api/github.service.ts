@@ -22,11 +22,12 @@ export const githubApiService = {
         API_PATHS.GITHUB.AUTH_STATUS
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<GitHubAuthStatus>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'GitHub認証状態の取得に失敗しました');
+      throw new Error(apiResponse?.error || 'GitHub認証状態の取得に失敗しました');
     } catch (error: any) {
       console.error('GitHub認証状態確認エラー:', error);
       
@@ -47,11 +48,12 @@ export const githubApiService = {
         API_PATHS.GITHUB.REPOS
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<GitHubRepository[]>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'リポジトリ一覧の取得に失敗しました');
+      throw new Error(apiResponse?.error || 'リポジトリ一覧の取得に失敗しました');
     } catch (error: any) {
       console.error('GitHubリポジトリ一覧取得エラー:', error);
       
@@ -81,11 +83,12 @@ export const githubApiService = {
         }
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<GitHubRepository>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'リポジトリの作成に失敗しました');
+      throw new Error(apiResponse?.error || 'リポジトリの作成に失敗しました');
     } catch (error: any) {
       console.error('GitHubリポジトリ作成エラー:', error);
       
@@ -115,11 +118,12 @@ export const githubApiService = {
         pushData
       );
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      const apiResponse = response.data as unknown as ApiResponse<GitHubPushResponse>;
+      if (apiResponse?.success && apiResponse?.data) {
+        return apiResponse.data;
       }
       
-      throw new Error(response.data.error || 'GitHubへのプッシュに失敗しました');
+      throw new Error(apiResponse?.error || 'GitHubへのプッシュに失敗しました');
     } catch (error: any) {
       console.error('GitHubプッシュエラー:', error);
       
